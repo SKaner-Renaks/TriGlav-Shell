@@ -9,7 +9,7 @@ from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 import psutil
 
-VERSION = '1.4'
+VERSION = '1.5'
 
 app = Flask(__name__)
 

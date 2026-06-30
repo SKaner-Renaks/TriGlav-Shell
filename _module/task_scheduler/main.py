@@ -9,7 +9,7 @@ import argparse
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = 'v2.4.4'
+VERSION = 'v2.4.5'
 
 app = Flask(__name__)
 

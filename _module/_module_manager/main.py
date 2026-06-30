@@ -3,13 +3,13 @@ import json
 import argparse
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
-CONFIG_PATH = os.path.join(SHELL_DIR, 'config.cfg')
+CONFIG_PATH = os.path.join(SHELL_DIR, '_data', 'config.cfg')
 
 import configparser
 
@@ -141,6 +141,18 @@ MANAGER_TEMPLATE = r"""
                 </table>
             </div>
         </div>
+
+        <div class="panel">
+            <div class="panel-header">Игры</div>
+            <div class="panel-body">
+                <table class="module-table">
+                    <thead>
+                        <tr><th>Модуль</th><th>Описание</th><th>Статус</th></tr>
+                    </thead>
+                    <tbody id="gameModules"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -161,25 +173,29 @@ MANAGER_TEMPLATE = r"""
         function renderModules() {
             const usualBody = document.getElementById('usualModules');
             const serviceBody = document.getElementById('serviceModules');
+            const gameBody = document.getElementById('gameModules');
             let usualHtml = '';
             let serviceHtml = '';
+            let gameHtml = '';
 
             modules.forEach(m => {
-                const isUsual = m.type === 'usual';
-                const enabled = isUsual ?
-                    (currentConfig.usual === 'all' || currentConfig.usual.split(',').map(s=>s.trim()).includes(m.name)) :
-                    (currentConfig.service === 'all' || currentConfig.service.split(',').map(s=>s.trim()).includes(m.name));
+                const type = m.type || 'usual';
+                const configKey = type;
+                const enabled = (currentConfig[configKey] === 'all' || (currentConfig[configKey] || '').split(',').map(s=>s.trim()).includes(m.name));
+                const isService = type === 'service';
 
                 const btnClass = enabled ? 'toggle-btn on' : 'toggle-btn off';
                 const rowClass = enabled ? '' : 'disabled';
-                const row = '<tr class="' + rowClass + '"><td><strong>' + m.title + '</strong></td><td>' + (m.description || '') + '</td><td><button class="' + btnClass + '" data-name="' + m.name + '" onclick="toggleModule(this)" ' + (lockEnabled && !isUsual ? 'disabled' : '') + '></button></td></tr>';
+                const row = '<tr class="' + rowClass + '"><td><strong>' + m.title + '</strong></td><td>' + (m.description || '') + '</td><td><button class="' + btnClass + '" data-name="' + m.name + '" onclick="toggleModule(this)" ' + (lockEnabled && isService ? 'disabled' : '') + '></button></td></tr>';
 
-                if (isUsual) usualHtml += row;
-                else serviceHtml += row;
+                if (type === 'service') serviceHtml += row;
+                else if (type === 'game') gameHtml += row;
+                else usualHtml += row;
             });
 
             usualBody.innerHTML = usualHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
             serviceBody.innerHTML = serviceHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
+            gameBody.innerHTML = gameHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет игр</td></tr>';
         }
 
         function toggleModule(btn) {
@@ -190,9 +206,8 @@ MANAGER_TEMPLATE = r"""
             const m = modules.find(m => m.name === name);
             if (!m) return;
 
-            const isUsual = m.type === 'usual';
-            const key = isUsual ? 'usual' : 'service';
-            let list = currentConfig[key] === 'all' ? modules.filter(x => x.type === m.type).map(x => x.name) : currentConfig[key].split(',').map(s => s.trim());
+            const key = m.type || 'usual';
+            let list = currentConfig[key] === 'all' ? modules.filter(x => (x.type || 'usual') === m.type).map(x => x.name) : (currentConfig[key] || '').split(',').map(s => s.trim());
 
             if (isOn) {
                 list = list.filter(n => n !== name);

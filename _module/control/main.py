@@ -8,7 +8,7 @@ from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_file
 import psutil
 
-VERSION = '1.3'
+VERSION = '1.4'
 
 app = Flask(__name__)
 

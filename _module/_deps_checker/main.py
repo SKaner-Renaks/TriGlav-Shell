@@ -19,7 +19,7 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))

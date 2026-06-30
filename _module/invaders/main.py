@@ -1,7 +1,7 @@
 import argparse
 from flask import Flask, render_template_string
 
-VERSION = '1.1'
+VERSION = '1.2'
 
 app = Flask(__name__)
 
