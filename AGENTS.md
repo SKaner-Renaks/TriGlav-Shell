@@ -55,7 +55,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 Shell-оболочка управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы к модулям через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell        (port 8080)   VERSION = '1.2.3'
+main.py              Ядро Shell        (port 8080)   VERSION = '1.2.4'
 manifest.json        Манифест Shell
 config.cfg           Глобальные настройки (INI)
 encrypt.py           Шифрование care.env (XOR+base64)
@@ -64,13 +64,13 @@ _lang/               Локализация (ru.json, en.json)
 _ps/                 PowerShell скрипты Shell
   _check_fw.ps1      Проверка файервола
 _module/             Автообнаружение модулей
-  task_scheduler/    Планировщик задач   (port 5002)   v2.4.4  type=usual
-  monitor/           Мониторинг сервера  (port 5001)   v1.4    type=usual
-  control/           Панель управления   (port 5004)   v1.3    type=usual
-  snake/             Змейка              (port 5006)   v1.1    type=usual
-  invaders/          Космические захватчики (port 5005) v1.1    type=usual
-  _deps_checker/     Проверка зависимостей (port 5007) v1.2.1  type=service
-  _module_manager/   Управление модулями (port 5008)   v1.0    type=service
+  task_scheduler/    Планировщик задач   (port 5002)   v2.4.5  type=usual
+  monitor/           Мониторинг сервера  (port 5001)   v1.5    type=usual
+  control/           Панель управления   (port 5004)   v1.4    type=usual
+  snake/             Змейка              (port 5006)   v1.2    type=game
+  invaders/          Космические захватчики (port 5005) v1.2    type=game
+  _deps_checker/     Проверка зависимостей (port 5007) v1.2.2  type=service
+  _module_manager/   Управление модулями (port 5008)   v1.1    type=service
 ```
 
 ---

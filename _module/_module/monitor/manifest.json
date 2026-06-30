@@ -1,0 +1,19 @@
+{
+  "name": "monitor",
+  "title": "Мониторинг сервера",
+  "version": "1.5",
+  "description": "Мониторинг CPU, RAM, GPU, дисков и сети",
+  "type": "usual",
+  "requires_admin": false,
+  "current_port": 5001,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "current_settings": {
+    "refresh_interval": 15
+  },
+  "default_settings": {
+    "refresh_interval": 15
+  }
+}

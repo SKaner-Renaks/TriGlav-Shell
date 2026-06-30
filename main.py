@@ -13,12 +13,15 @@ from flask import Flask, render_template_string, jsonify, request, session, redi
 import requests as req_lib
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, '_data')
 MODULE_DIR = os.path.join(BASE_DIR, '_module')
-LANG_DIR = os.path.join(BASE_DIR, '_lang')
-CONFIG_PATH = os.path.join(BASE_DIR, 'config.cfg')
-CARE_ENV_PATH = os.path.join(BASE_DIR, 'care.env')
+LANG_DIR = os.path.join(DATA_DIR, '_lang')
+CONFIG_PATH = os.path.join(DATA_DIR, 'config.cfg')
+CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
-VERSION = '1.2.3'
+sys.path.insert(0, DATA_DIR)
+
+VERSION = '1.2.4'
 
 app = Flask(__name__)
 
@@ -172,7 +175,7 @@ def is_port_free(port):
 def check_firewall(port):
     try:
         result = subprocess.run(
-            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(BASE_DIR, '_ps', '_check_fw.ps1'), str(port)],
+            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(DATA_DIR, '_ps', '_check_fw.ps1'), str(port)],
             capture_output=True, timeout=10
         )
         output = result.stdout.decode('cp866', errors='replace').strip() if result.stdout else ''
@@ -510,7 +513,8 @@ def api_restart():
     stop_all_modules()
     def restart():
         time.sleep(1)
-        os.execl(sys.executable, sys.executable, *sys.argv)
+        subprocess.Popen([sys.executable] + sys.argv, cwd=os.getcwd())
+        os._exit(0)
     threading.Thread(target=restart, daemon=True).start()
     return jsonify({'status': 'restarting'})
 
@@ -562,7 +566,7 @@ def proxy(port, path):
 @app.route('/_images/<path:filename>')
 def serve_image(filename):
     from flask import send_from_directory
-    images_dir = os.path.join(BASE_DIR, '_images')
+    images_dir = os.path.join(DATA_DIR, '_images')
     return send_from_directory(images_dir, filename)
 
 
@@ -658,6 +662,9 @@ SHELL_TEMPLATE = r"""
         .module-btn.service:hover { background:#2d2520; }
         .module-btn.service.active { border-left-color:#ff9800; background:#2d2520; }
         .module-btn.service.active .desc { color:#cc7a00; }
+        .module-btn.game:hover { background:#1a2a15; }
+        .module-btn.game.active { border-left-color:#8bc34a; background:#1a2a15; }
+        .module-btn.game.active .desc { color:#7cb342; }
         .module-btn .status { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; }
         .status-running { background:#21bf4b; }
         .status-stopped { background:#ff6c59; }
@@ -778,7 +785,7 @@ SHELL_TEMPLATE = r"""
                 if (!m.running) return;
                 const statusClass = m.running ? 'status-running' : 'status-stopped';
                 const activeClass = currentModule === m.name ? 'active' : '';
-                const typeClass = m.type === 'service' ? ' service' : '';
+                const typeClass = m.type === 'service' ? ' service' : m.type === 'game' ? ' game' : '';
                 html += '<button class="module-btn ' + activeClass + typeClass + '" data-name="' + m.name + '" data-port="' + m.port + '" draggable="true" onclick="selectModule(\'' + m.name + '\')">'
                     + '<span class="status ' + statusClass + '"></span>' + m.title
                     + '<span class="desc">' + m.description + '</span></button>';
