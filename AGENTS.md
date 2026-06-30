@@ -12,7 +12,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 - **§3**: Единая авторизация в Shell, модули без auth, Production/Development режимы
 - **§4**: Структура каталогов (main.py, config.cfg, encrypt.py, care.env, _lang/, _module/)
 - **§5.1**: config.cfg — port, auth_mode, environment, global_refresh_interval, global_theme, allowed_ips
-- **§5.2**: manifest.json — name, title, version, description, requires_admin, type, current_port, languages, settings
+- **§5.2**: manifest.json — name, title, version, description, type, requires_admin, current_port, languages, settings
 - **§5.3**: encrypt.py — шифрование care.env, динамические методы, auto-create с дефолтами
 - **§6.1**: Автообнаружение модулей, выделение портов, subprocess.Popen с --host/--port
 - **§6.2**: Авторизация — AD (ldap3) + local, @login_required на маршрутах Shell
@@ -25,6 +25,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 - **v1.2.1**: Версионность, requirements.txt для всех модулей
 - **v1.2.1+**: Модули проверки зависимостей, визуализация перезапуска модулей
 - **v1.2.2**: Типы модулей (shell/usual/service), автозапуск по типу, service-стилизация
+- **v1.2.3**: Оптимизация скорости загрузки модулей, модуль управления модулями
 
 ### НЕ сделано / требует доработки
 
@@ -54,7 +55,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 Shell-оболочка управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы к модулям через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell        (port 8080)   VERSION = '1.2.2'
+main.py              Ядро Shell        (port 8080)   VERSION = '1.2.3'
 manifest.json        Манифест Shell
 config.cfg           Глобальные настройки (INI)
 encrypt.py           Шифрование care.env (XOR+base64)
@@ -69,23 +70,77 @@ _module/             Автообнаружение модулей
   snake/             Змейка              (port 5006)   v1.1    type=usual
   invaders/          Космические захватчики (port 5005) v1.1    type=usual
   _deps_checker/     Проверка зависимостей (port 5007) v1.2.1  type=service
+  _module_manager/   Управление модулями (port 5008)   v1.0    type=service
 ```
+
+---
+
+## Создание модулей
 
 ### Типы модулей
 
-| Тип | Описание | Цвет в sidebar | Автозапуск |
-|-----|----------|----------------|------------|
-| `shell` | Ядро оболочки | — | — |
-| `usual` | Обычные модули | стандартный | настраивается в config.cfg |
-| `service` | Сервисные модули | оранжевый (hover) | настраивается в config.cfg |
+| Тип | Описание | Папка | Цвет в sidebar | Автозапуск |
+|-----|----------|-------|----------------|------------|
+| `shell` | Ядро оболочки | корень | — | — |
+| `usual` | Обычный модуль | `_module/name/` | стандартный | через config |
+| `service` | Сервисный модуль | `_module/_name/` | оранжевый (hover) | через config |
 
-### Автозапуск модулей (config.cfg)
+### Именование папок
+
+- **Обычные модули**: `_module/task_scheduler/`, `_module/monitor/`
+- **Сервисные модули**: `_module/_deps_checker/`, `_module/_module_manager/`
+- Префикс `_` = сервисный модуль
+
+### Структура модуля
+
+```
+_module/[name]/
+  main.py           # Flask-приложение
+  manifest.json     # Метаданные модуля
+  requirements.txt  # Зависимости
+```
+
+### manifest.json — обязательные поля
+
+```json
+{
+  "name": "my_module",
+  "title": "Название модуля",
+  "version": "1.0",
+  "description": "Описание модуля",
+  "type": "usual",
+  "requires_admin": false,
+  "current_port": 5009,
+  "languages": ["ru", "en"],
+  "current_settings": {},
+  "default_settings": {}
+}
+```
+
+### Требования к модулю
+
+1. **Flask-приложение**: принимает `--host` и `--port` через argparse
+2. **Без auth**: авторизацию обеспечивает Shell
+3. **Тема**: Proxmox-style dark theme (#1a1a1a, #262626, #47a8ff)
+4. **requirements.txt**: указать зависимости (обычно `flask>=3.0`)
+5. **PS1-скрипты**: если нужны — в папке модуля (не в корне)
+
+### Требования к отображению в Shell
+
+- Обычные модули: стандартный фон в sidebar
+- Сервисные модули: оранжевый фон при наведении и выборе
+- Отключённые модули: НЕ отображаются в sidebar Shell
+- Модуль Manager (`_module_manager`): отображает ВСЕ модули (включая отключённые)
+
+### Конфиг автозапуска (config.cfg)
 
 ```ini
 [modules_auto_start]
-usual = all          # все обычные, или список: monitor,control
-service = all        # все сервисные, или список: deps_checker
+usual = all                    # или: monitor,control,task_scheduler
+service = all                  # или: deps_checker
 ```
+
+---
 
 ## Running
 
@@ -126,3 +181,5 @@ Start-Process python -ArgumentList '"main.py"' -Verb RunAs
 - Backup files: `BackUp/YYYYMMDD-N/` directory
 - Each module and shell has its own `requirements.txt`
 - При перезапуске модуля через Shell показывается спиннер с текстом «Перезапуск модуля...»
+- Сервисные модули: папка с префиксом `_`, оранжевый цвет в sidebar
+- Обычные модули: папка без префикса, стандартный цвет в sidebar

@@ -1,7 +1,7 @@
 {
   "name": "shell",
   "title": "TriGlav Shell",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Управляющая веб-оболочка для модулей автоматизации",
   "type": "shell",
   "requires_admin": false,

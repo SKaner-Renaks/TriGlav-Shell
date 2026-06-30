@@ -18,7 +18,7 @@ LANG_DIR = os.path.join(BASE_DIR, '_lang')
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.cfg')
 CARE_ENV_PATH = os.path.join(BASE_DIR, 'care.env')
 
-VERSION = '1.2.2'
+VERSION = '1.2.3'
 
 app = Flask(__name__)
 
@@ -281,7 +281,7 @@ def check_module_health(name):
     port = module_ports[name]
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(2)
+            s.settimeout(0.1)
             return s.connect_ex(('127.0.0.1', port)) == 0
     except Exception:
         return False
@@ -502,6 +502,17 @@ def api_stop():
         os._exit(0)
     threading.Thread(target=shutdown, daemon=True).start()
     return jsonify({'status': 'stopping'})
+
+
+@app.route('/api/restart', methods=['POST'])
+@login_required
+def api_restart():
+    stop_all_modules()
+    def restart():
+        time.sleep(1)
+        os.execl(sys.executable, sys.executable, *sys.argv)
+    threading.Thread(target=restart, daemon=True).start()
+    return jsonify({'status': 'restarting'})
 
 
 @app.route('/health')
@@ -764,6 +775,7 @@ SHELL_TEMPLATE = r"""
         function renderModuleList() {
             let html = '';
             modules.forEach(m => {
+                if (!m.running) return;
                 const statusClass = m.running ? 'status-running' : 'status-stopped';
                 const activeClass = currentModule === m.name ? 'active' : '';
                 const typeClass = m.type === 'service' ? ' service' : '';
@@ -998,7 +1010,13 @@ SHELL_TEMPLATE = r"""
 
         window.addEventListener('message', async function(event) {
             const data = event.data;
-            if (data && data.action === 'restart-elevated' && data.module) {
+            if (data && data.action === 'restart-shell') {
+                try {
+                    await fetch('/api/restart', { method: 'POST' });
+                    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Перезапуск Shell...</div>';
+                    setTimeout(() => location.reload(), 5000);
+                } catch(e) {}
+            } else if (data && data.action === 'restart-elevated' && data.module) {
                 if (confirm('Restart ' + data.module + ' with Administrator rights?')) {
                     try {
                         const r = await fetch('/api/module/' + data.module + '/restart-elevated', { method: 'POST' });
