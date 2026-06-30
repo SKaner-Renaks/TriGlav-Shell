@@ -1,0 +1,14 @@
+{
+  "name": "invaders",
+  "title": "Космические захватчики",
+  "version": "1.1",
+  "description": "Классический Space Invaders",
+  "requires_admin": false,
+  "current_port": 5005,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "current_settings": {},
+  "default_settings": {}
+}
