@@ -13,7 +13,7 @@ VERSION = 'v2.4.4'
 
 app = Flask(__name__)
 
-PS1_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '_get_tasks.ps1')
+PS1_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_get_tasks.ps1')
 
 PS1_CONTENT = r"""
 $ErrorActionPreference = 'SilentlyContinue'

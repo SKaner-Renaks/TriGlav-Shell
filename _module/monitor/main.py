@@ -155,7 +155,7 @@ def get_usage():
     }
 
 
-DISK_MODELS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '_get_disk_models.ps1')
+DISK_MODELS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), '_get_disk_models.ps1')
 _disk_models_cache = None
 
 

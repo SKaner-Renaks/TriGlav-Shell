@@ -3,6 +3,7 @@
   "title": "Планировщик задач",
   "version": "2.4.4",
   "description": "Просмотр и управление задачами Windows Task Scheduler",
+  "type": "usual",
   "requires_admin": true,
   "current_port": 5002,
   "languages": [
