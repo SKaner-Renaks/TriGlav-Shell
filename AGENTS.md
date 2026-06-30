@@ -12,7 +12,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 - **§3**: Единая авторизация в Shell, модули без auth, Production/Development режимы
 - **§4**: Структура каталогов (main.py, config.cfg, encrypt.py, care.env, _lang/, _module/)
 - **§5.1**: config.cfg — port, auth_mode, environment, global_refresh_interval, global_theme, allowed_ips
-- **§5.2**: manifest.json — name, title, version, description, requires_admin, current_port, languages, settings
+- **§5.2**: manifest.json — name, title, version, description, requires_admin, type, current_port, languages, settings
 - **§5.3**: encrypt.py — шифрование care.env, динамические методы, auto-create с дефолтами
 - **§6.1**: Автообнаружение модулей, выделение портов, subprocess.Popen с --host/--port
 - **§6.2**: Авторизация — AD (ldap3) + local, @login_required на маршрутах Shell
@@ -20,10 +20,11 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 - **§6.4**: Настройки и сброс — кнопка «Шестерёнка», сброс модуля/консоли
 - **§6.5**: UI — 4 зоны, splitter с drag-to-resize, localStorage для ширины, iframe
 - **§7**: Адаптация control, monitor, task_server как модулей в _module/
-- **§8**: Бекап старых файлов в BackUp/2026-06-28-01
+- **§8**: Бекап старых файлов в BackUp/
 - **v1.2**: Reverse proxy для удалённого доступа, проверка firewall, визуализация запуска
 - **v1.2.1**: Версионность, requirements.txt для всех модулей
 - **v1.2.1+**: Модули проверки зависимостей, визуализация перезапуска модулей
+- **v1.2.2**: Типы модулей (shell/usual/service), автозапуск по типу, service-стилизация
 
 ### НЕ сделано / требует доработки
 
@@ -53,18 +54,37 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 Shell-оболочка управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы к модулям через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell        (port 8080)   VERSION = '1.2.1'
+main.py              Ядро Shell        (port 8080)   VERSION = '1.2.2'
+manifest.json        Манифест Shell
 config.cfg           Глобальные настройки (INI)
 encrypt.py           Шифрование care.env (XOR+base64)
 care.env             Хранилище секретов (auto-created)
 _lang/               Локализация (ru.json, en.json)
+_ps/                 PowerShell скрипты Shell
+  _check_fw.ps1      Проверка файервола
 _module/             Автообнаружение модулей
-  task_scheduler/    Планировщик задач   (port 5002)   VERSION = 'v2.4.4'
-  monitor/           Мониторинг сервера  (port 5001)   VERSION = '1.4'
-  control/           Панель управления   (port 5004)   VERSION = '1.3'
-  snake/             Змейка              (port 5006)   VERSION = '1.1'
-  invaders/          Космические захватчики (port 5005) VERSION = '1.1'
-  deps_checker/      Проверка зависимостей (port 5007) VERSION = '1.1'
+  task_scheduler/    Планировщик задач   (port 5002)   v2.4.4  type=usual
+  monitor/           Мониторинг сервера  (port 5001)   v1.4    type=usual
+  control/           Панель управления   (port 5004)   v1.3    type=usual
+  snake/             Змейка              (port 5006)   v1.1    type=usual
+  invaders/          Космические захватчики (port 5005) v1.1    type=usual
+  _deps_checker/     Проверка зависимостей (port 5007) v1.2.1  type=service
+```
+
+### Типы модулей
+
+| Тип | Описание | Цвет в sidebar | Автозапуск |
+|-----|----------|----------------|------------|
+| `shell` | Ядро оболочки | — | — |
+| `usual` | Обычные модули | стандартный | настраивается в config.cfg |
+| `service` | Сервисные модули | оранжевый (hover) | настраивается в config.cfg |
+
+### Автозапуск модулей (config.cfg)
+
+```ini
+[modules_auto_start]
+usual = all          # все обычные, или список: monitor,control
+service = all        # все сервисные, или список: deps_checker
 ```
 
 ## Running
@@ -93,11 +113,12 @@ Start-Process python -ArgumentList '"main.py"' -Verb RunAs
 - **Firewall**: Shell checks if port is open on startup and warns if not.
 - **Proxy**: Shell rewrites relative URLs in module HTML to route through `/proxy/<port>/`.
 - **requires_admin**: UI shows admin status, "Restart as Admin" button uses ShellExecuteW + runas.
+- **PS1 files**: `_check_fw.ps1` в `_ps/`, модульные PS1 в папках модулей.
 
 ## Code Conventions
 
 - Shell config in `config.cfg` only — modules don't import shared config
-- Module metadata in `manifest.json` (name, title, version, port, settings)
+- Module metadata in `manifest.json` (name, title, version, description, type, port, settings)
 - Modules accept `--host` and `--port` via argparse
 - Modules have NO auth — Shell handles authentication
 - Version string in script header: `VERSION = 'x.y.z'`

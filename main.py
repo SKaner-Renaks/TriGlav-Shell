@@ -18,7 +18,7 @@ LANG_DIR = os.path.join(BASE_DIR, '_lang')
 CONFIG_PATH = os.path.join(BASE_DIR, 'config.cfg')
 CARE_ENV_PATH = os.path.join(BASE_DIR, 'care.env')
 
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 
 app = Flask(__name__)
 
@@ -43,6 +43,10 @@ _lang_cache = {}
 
 module_order_cfg = dict(config['module_order']) if 'module_order' in config else {}
 MODULE_ORDER = [m.strip() for m in module_order_cfg.get('order', '').split(',') if m.strip()]
+
+autostart_cfg = dict(config['modules_auto_start']) if 'modules_auto_start' in config else {}
+AUTOSTART_USUAL = autostart_cfg.get('usual', 'all')
+AUTOSTART_SERVICE = autostart_cfg.get('service', 'all')
 
 
 def load_lang(lang_code):
@@ -168,7 +172,7 @@ def is_port_free(port):
 def check_firewall(port):
     try:
         result = subprocess.run(
-            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(BASE_DIR, '_check_fw.ps1'), str(port)],
+            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(BASE_DIR, '_ps', '_check_fw.ps1'), str(port)],
             capture_output=True, timeout=10
         )
         output = result.stdout.decode('cp866', errors='replace').strip() if result.stdout else ''
@@ -337,6 +341,7 @@ def api_modules():
             'title': m.get('title', name),
             'version': m.get('version', '?'),
             'description': m.get('description', ''),
+            'type': m.get('type', 'usual'),
             'requires_admin': m.get('requires_admin', False),
             'port': module_ports.get(name, m.get('current_port', 0)),
             'running': check_module_health(name),
@@ -639,6 +644,9 @@ SHELL_TEMPLATE = r"""
         .module-btn.active { background:#0057b3; color:#fff; border-left-color:#47a8ff; }
         .module-btn .desc { display:block; font-size:10px; color:#888; margin-top:2px; }
         .module-btn.active .desc { color:#aad4ff; }
+        .module-btn.service:hover { background:#2d2520; }
+        .module-btn.service.active { border-left-color:#ff9800; background:#2d2520; }
+        .module-btn.service.active .desc { color:#cc7a00; }
         .module-btn .status { display:inline-block; width:6px; height:6px; border-radius:50%; margin-right:6px; }
         .status-running { background:#21bf4b; }
         .status-stopped { background:#ff6c59; }
@@ -758,7 +766,8 @@ SHELL_TEMPLATE = r"""
             modules.forEach(m => {
                 const statusClass = m.running ? 'status-running' : 'status-stopped';
                 const activeClass = currentModule === m.name ? 'active' : '';
-                html += '<button class="module-btn ' + activeClass + '" data-name="' + m.name + '" data-port="' + m.port + '" draggable="true" onclick="selectModule(\'' + m.name + '\')">'
+                const typeClass = m.type === 'service' ? ' service' : '';
+                html += '<button class="module-btn ' + activeClass + typeClass + '" data-name="' + m.name + '" data-port="' + m.port + '" draggable="true" onclick="selectModule(\'' + m.name + '\')">'
                     + '<span class="status ' + statusClass + '"></span>' + m.title
                     + '<span class="desc">' + m.description + '</span></button>';
             });
@@ -1048,9 +1057,17 @@ if __name__ == '__main__':
             json.dump({k: v for k, v in m.items() if k != '_path'}, f, indent=2, ensure_ascii=False)
         print(f"    {m.get('title', name):25s} -> :{port}")
 
+    def should_autostart(name, mod_type):
+        allowed = AUTOSTART_USUAL if mod_type == 'usual' else AUTOSTART_SERVICE
+        if allowed.lower() == 'all':
+            return True
+        return name in [x.strip() for x in allowed.split(',')]
+
+    to_start = [m for m in modules if should_autostart(m['name'], m.get('type', 'usual'))]
+
     print("\n  Starting modules...")
-    total = len(modules)
-    for i, m in enumerate(modules, 1):
+    total = len(to_start)
+    for i, m in enumerate(to_start, 1):
         name = m.get('title', m['name'])
         print(f"    [{i}/{total}] {name}...", end=' ', flush=True)
         ok = start_module(m)
@@ -1062,7 +1079,7 @@ if __name__ == '__main__':
     print("\n" + "=" * 50)
     print(f"  TriGlav Shell {VERSION}")
     print(f"  http://{SHELL_HOST}:{SHELL_PORT}")
-    print(f"  Modules: {len(modules)} (auto-started)")
+    print(f"  Modules: {len(to_start)}/{len(modules)} (auto-started)")
     print("  Press Ctrl+C to stop")
     print("=" * 50)
 
