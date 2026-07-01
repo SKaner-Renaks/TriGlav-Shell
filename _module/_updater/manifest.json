@@ -1,7 +1,7 @@
 {
   "name": "updater",
   "title": "Обновления",
-  "version": "1.3.9",
+  "version": "1.4.0",
   "description": "Обновление и установка модулей из GitHub",
   "type": "service",
   "requires_admin": false,

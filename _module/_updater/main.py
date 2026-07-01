@@ -10,7 +10,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.9'
+VERSION = '1.4.0'
 
 app = Flask(__name__)
 
@@ -631,7 +631,24 @@ def api_install():
     errors = []
 
     for name in modules:
-        dest_dir = os.path.join(SHELL_DIR, '_module', name)
+        # Find actual directory name from repo archive
+        src_name = name
+        if os.path.isdir(EXTRACT_DIR):
+            mod_base = os.path.join(EXTRACT_DIR, '_module')
+            if os.path.isdir(mod_base):
+                for d in os.listdir(mod_base):
+                    mp = os.path.join(mod_base, d, 'manifest.json')
+                    if os.path.isfile(mp):
+                        try:
+                            with open(mp, 'r', encoding='utf-8') as f:
+                                mf = json.load(f)
+                            if mf.get('name') == name:
+                                src_name = d
+                                break
+                        except Exception:
+                            pass
+
+        dest_dir = os.path.join(SHELL_DIR, '_module', src_name)
         if os.path.exists(dest_dir):
             results.append({'name': name, 'status': 'exists'})
             continue
@@ -679,9 +696,22 @@ def api_update():
                 log.error('update: stop failed: %s', e)
             time.sleep(3)
 
-        dest_dir = os.path.join(SHELL_DIR, '_module', name)
-        if not os.path.isdir(dest_dir):
-            log.error('update: dest not found %s', dest_dir)
+        # Find actual module directory (service modules have _ prefix)
+        dest_dir = None
+        module_base = os.path.join(SHELL_DIR, '_module')
+        for d in os.listdir(module_base):
+            mp = os.path.join(module_base, d, 'manifest.json')
+            if os.path.isfile(mp):
+                try:
+                    with open(mp, 'r', encoding='utf-8') as f:
+                        mf = json.load(f)
+                    if mf.get('name') == name:
+                        dest_dir = os.path.join(module_base, d)
+                        break
+                except Exception:
+                    pass
+        if not dest_dir:
+            log.error('update: module %s not found in _module/', name)
             results.append({'name': name, 'status': 'not_found'})
             continue
 
