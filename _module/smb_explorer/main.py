@@ -5,7 +5,7 @@ import argparse
 import subprocess
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 app = Flask(__name__)
 
@@ -25,12 +25,13 @@ def run_ps(command):
 
 
 def get_shares():
-    shares = run_ps('Get-SmbShare | Select-Object Name,Path,Description,CurrentUsers | ConvertTo-Json')
+    shares = run_ps('Get-SmbShare | Select-Object Name,Path,Description,CurrentUsers,Special | ConvertTo-Json')
     if isinstance(shares, dict):
         shares = [shares]
     result = []
     for s in shares:
         name = s.get('Name', '')
+        is_special = s.get('Special', False)
         perms = []
         if name:
             raw = run_ps(f'Get-SmbShareAccess -Name "{name}" | Select-Object AccountName,AccessRight,AccessControlType | ConvertTo-Json')
@@ -47,8 +48,10 @@ def get_shares():
             'path': s.get('Path', ''),
             'description': s.get('Description', ''),
             'current_users': s.get('CurrentUsers', 0),
+            'is_special': is_special,
             'permissions': perms
         })
+    result.sort(key=lambda x: (x['is_special'], x['name']))
     return result
 
 
@@ -209,13 +212,31 @@ TEMPLATE = r"""
         function updateShareDropdown() {
             const sel = document.getElementById('shareFilter');
             const current = sel.value;
+            const custom = sharesData.filter(s => !s.is_special);
+            const system = sharesData.filter(s => s.is_special);
             sel.innerHTML = '<option value="">All Shares</option>';
-            sharesData.forEach(s => {
-                const opt = document.createElement('option');
-                opt.value = s.name;
-                opt.textContent = s.name + ' (' + s.path + ')';
-                sel.appendChild(opt);
-            });
+            if (custom.length) {
+                const grp1 = document.createElement('optgroup');
+                grp1.label = 'Custom Shares';
+                custom.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name + ' (' + s.path + ')';
+                    grp1.appendChild(opt);
+                });
+                sel.appendChild(grp1);
+            }
+            if (system.length) {
+                const grp2 = document.createElement('optgroup');
+                grp2.label = 'System Shares';
+                system.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name + ' (' + s.path + ')';
+                    grp2.appendChild(opt);
+                });
+                sel.appendChild(grp2);
+            }
             sel.value = current;
         }
 
@@ -241,7 +262,8 @@ TEMPLATE = r"""
                     const cls = p.right === 'Full' ? 'tag-full' : p.right === 'Change' ? 'tag-change' : 'tag-read';
                     return '<span class="tag ' + cls + '">' + p.account + ': ' + p.right + '</span>';
                 }).join('');
-                html += '<tr><td><strong>' + s.name + '</strong></td><td>' + s.path + '</td><td>' + (s.description||'') + '</td><td>' + s.current_users + '</td><td>' + perms + '</td></tr>';
+                const marker = s.is_special ? ' <span style="color:#666;font-size:10px;">[system]</span>' : '';
+                html += '<tr><td><strong>' + s.name + '</strong>' + marker + '</td><td>' + s.path + '</td><td>' + (s.description||'') + '</td><td>' + s.current_users + '</td><td>' + perms + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
