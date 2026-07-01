@@ -9,7 +9,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.6'
+VERSION = '1.3.7'
 
 app = Flask(__name__)
 
@@ -149,17 +149,28 @@ def download_archive():
 def copy_module_from_repo(module_name, dest_dir):
     src_dir = os.path.join(EXTRACT_DIR, '_module', module_name)
     if not os.path.isdir(src_dir):
-        return False, f'Module {module_name} not found in archive'
+        return False, f'Source not found: {src_dir}'
 
     for attempt in range(3):
         try:
             _copy_tree(src_dir, dest_dir)
-            return True, 'ok'
+            # Verify copy
+            src_files = []
+            for root, dirs, files in os.walk(src_dir):
+                for f in files:
+                    src_files.append(os.path.join(root, f))
+            copied = 0
+            for sf in src_files:
+                rel = os.path.relpath(sf, src_dir)
+                df = os.path.join(dest_dir, rel)
+                if os.path.exists(df):
+                    copied += 1
+            return True, f'copied {copied}/{len(src_files)} files'
         except PermissionError:
             if attempt < 2:
                 time.sleep(2)
             else:
-                return False, 'Permission denied - module may still be running'
+                return False, 'Permission denied - module files locked'
         except Exception as e:
             return False, str(e)
 
@@ -517,8 +528,13 @@ DOWNLOADER_TEMPLATE = r"""
                 hideProgress();
                 let msg = d.message;
                 if (d.results) {
-                    const skipped = d.results.filter(r => r.status === 'skipped');
-                    if (skipped.length) msg += ' (Skipped: ' + skipped.map(s=>s.name).join(', ') + ')';
+                    const details = d.results.map(r => {
+                        if (r.status === 'updated') return r.name + ': OK (' + (r.info||'') + ')';
+                        if (r.status === 'skipped') return r.name + ': skipped (' + r.reason + ')';
+                        if (r.status === 'failed') return r.name + ': FAILED (' + r.error + ')';
+                        return r.name + ': ' + r.status;
+                    }).join('\n');
+                    msg = d.message + '\n' + details;
                 }
                 showStatus(msg, d.errors && d.errors.length ? 'error' : 'success');
                 scanRepo();
@@ -653,7 +669,7 @@ def api_update():
                 pass
 
         if ok:
-            results.append({'name': name, 'status': 'updated'})
+            results.append({'name': name, 'status': 'updated', 'info': msg})
         else:
             results.append({'name': name, 'status': 'failed', 'error': msg})
             errors.append(f'{name}: {msg}')
