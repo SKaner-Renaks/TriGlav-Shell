@@ -9,7 +9,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.4'
+VERSION = '1.3.5'
 
 app = Flask(__name__)
 
@@ -151,18 +151,28 @@ def copy_module_from_repo(module_name, dest_dir):
     if not os.path.isdir(src_dir):
         return False, f'Module {module_name} not found in archive'
 
-    os.makedirs(dest_dir, exist_ok=True)
-    for item in os.listdir(src_dir):
-        s = os.path.join(src_dir, item)
-        d = os.path.join(dest_dir, item)
-        if os.path.isdir(s):
-            if os.path.exists(d):
-                shutil.rmtree(d)
-            shutil.copytree(s, d)
-        else:
-            shutil.copy2(s, d)
+    for attempt in range(3):
+        try:
+            os.makedirs(dest_dir, exist_ok=True)
+            for item in os.listdir(src_dir):
+                s = os.path.join(src_dir, item)
+                d = os.path.join(dest_dir, item)
+                if os.path.isdir(s):
+                    if os.path.exists(d):
+                        shutil.rmtree(d)
+                    shutil.copytree(s, d)
+                else:
+                    shutil.copy2(s, d)
+            return True, 'ok'
+        except PermissionError:
+            if attempt < 2:
+                time.sleep(2)
+            else:
+                return False, 'Permission denied - module may still be running'
+        except Exception as e:
+            return False, str(e)
 
-    return True, 'ok'
+    return False, 'Failed after retries'
 
 
 DOWNLOADER_TEMPLATE = r"""
@@ -625,7 +635,7 @@ def api_update():
                 requests.post(f'http://127.0.0.1:8080/api/module/{name}/stop', timeout=5)
             except Exception:
                 pass
-            time.sleep(1)
+            time.sleep(3)
 
         dest_dir = os.path.join(SHELL_DIR, '_module', name)
         if not os.path.isdir(dest_dir):
