@@ -149,7 +149,10 @@ TEMPLATE = r"""
                 <span id="filesCount"></span>
             </div>
             <div class="toolbar">
-                <input type="text" class="search" id="searchInput" placeholder="Search by path, user or computer..." oninput="filterFiles()">
+                <select id="shareFilter" onchange="filterFiles()">
+                    <option value="">All Shares</option>
+                </select>
+                <input type="text" class="search" id="searchInput" placeholder="Search by user, path or computer..." oninput="filterFiles()">
                 <select id="timerSelect" onchange="setTimer()">
                     <option value="0">Timer: Off</option>
                     <option value="1">1s</option>
@@ -199,13 +202,28 @@ TEMPLATE = r"""
                 const r = await fetch('/api/shares');
                 sharesData = await r.json();
                 renderShares();
+                updateShareDropdown();
             } catch(e) {}
+        }
+
+        function updateShareDropdown() {
+            const sel = document.getElementById('shareFilter');
+            const current = sel.value;
+            sel.innerHTML = '<option value="">All Shares</option>';
+            sharesData.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name + ' (' + s.path + ')';
+                sel.appendChild(opt);
+            });
+            sel.value = current;
         }
 
         async function loadFiles() {
             try {
                 const r = await fetch('/api/open-files');
                 filesData = await r.json();
+                updateShareDropdown();
                 filterFiles();
             } catch(e) {}
         }
@@ -230,12 +248,15 @@ TEMPLATE = r"""
 
         function filterFiles() {
             const q = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = filesData.filter(f =>
-                (f.path||'').toLowerCase().includes(q) ||
-                (f.client_user||'').toLowerCase().includes(q) ||
-                (f.client_computer||'').toLowerCase().includes(q) ||
-                (f.share_path||'').toLowerCase().includes(q)
-            );
+            const share = document.getElementById('shareFilter').value;
+            const filtered = filesData.filter(f => {
+                if (share && !(f.share_path||'').toLowerCase().includes(share.toLowerCase())) return false;
+                if (!q) return true;
+                return (f.path||'').toLowerCase().includes(q) ||
+                    (f.client_user||'').toLowerCase().includes(q) ||
+                    (f.client_computer||'').toLowerCase().includes(q) ||
+                    (f.share_path||'').toLowerCase().includes(q);
+            });
             renderFiles(filtered);
         }
 
