@@ -10,7 +10,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.8'
+VERSION = '1.3.9'
 
 app = Flask(__name__)
 
@@ -29,8 +29,8 @@ log.setLevel(logging.DEBUG)
 
 
 def setup_log():
-    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
-    fh = logging.FileHandler(os.path.join(DOWNLOAD_DIR, 'updater.log'), encoding='utf-8')
+    log_path = os.path.join(BASE_DIR, 'updater.log')
+    fh = logging.FileHandler(log_path, encoding='utf-8')
     fh.setLevel(logging.DEBUG)
     fmt = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
     fh.setFormatter(fmt)
