@@ -1,17 +1,19 @@
 import os
 import json
+import shutil
+import time
 import argparse
+import configparser
+import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.1'
+VERSION = '1.2.1'
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
 CONFIG_PATH = os.path.join(SHELL_DIR, '_data', 'config.cfg')
-
-import configparser
 
 
 def load_config():
@@ -24,15 +26,16 @@ def get_autostart_config():
     cfg = load_config()
     if 'modules_auto_start' in cfg:
         return dict(cfg['modules_auto_start'])
-    return {'usual': 'all', 'service': 'all'}
+    return {'usual': 'all', 'service': 'all', 'game': 'all'}
 
 
-def save_autostart_config(usual, service):
+def save_autostart_config(usual, service, game='all'):
     cfg = load_config()
     if not cfg.has_section('modules_auto_start'):
         cfg.add_section('modules_auto_start')
     cfg.set('modules_auto_start', 'usual', usual)
     cfg.set('modules_auto_start', 'service', service)
+    cfg.set('modules_auto_start', 'game', game)
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         cfg.write(f)
 
@@ -73,11 +76,9 @@ MANAGER_TEMPLATE = r"""
         .btn-primary:hover { background:#0073d9; }
         .btn-default { background:#404040; color:#f2f2f2; }
         .btn-default:hover { background:#595959; }
-        .btn-success { background:#1a3d24; color:#21bf4b; border-color:#21bf4b; }
-        .btn-success:hover { background:#21bf4b; color:#fff; }
         .content { padding:16px 20px; }
         .panel { background:#262626; border:1px solid #404040; border-radius:3px; margin-bottom:12px; }
-        .panel-header { background:#333; padding:8px 12px; border-bottom:1px solid #404040; font-weight:600; color:#47a8ff; font-size:12px; display:flex; justify-content:space-between; align-items:center; }
+        .panel-header { background:#333; padding:8px 12px; border-bottom:1px solid #404040; font-weight:600; color:#47a8ff; font-size:12px; }
         .panel-body { padding:12px; }
         .warning { background:#3d2a00; border:1px solid #cc7a00; border-radius:3px; padding:8px 12px; margin-bottom:12px; color:#ffcc00; font-size:12px; }
         .lock-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
@@ -98,14 +99,16 @@ MANAGER_TEMPLATE = r"""
         .toggle-btn.off { background:#666; }
         .toggle-btn.off::after { content:''; position:absolute; width:14px; height:14px; background:#fff; border-radius:50%; top:3px; left:3px; transition:0.3s; }
         .toggle-btn:disabled { opacity:0.4; cursor:not-allowed; }
-        .service-section { margin-top:16px; padding-top:16px; border-top:1px solid #404040; }
+        .btn-delete { background:none; border:1px solid #ff6c59; color:#ff6c59; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
+        .btn-delete:hover { background:#ff6c59; color:#fff; }
+        .btn-delete:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
     </style>
 </head>
 <body>
     <div class="header">
         <div>
             <h1>Модули {{ version }}</h1>
-            <div class="header-info">Управление автозапуском модулей оболочки</div>
+            <div class="header-info">Управление модулями оболочки</div>
         </div>
         <div class="controls">
             <button class="btn btn-primary" onclick="saveAndRestart()">Применить и перезапустить</button>
@@ -113,29 +116,17 @@ MANAGER_TEMPLATE = r"""
     </div>
     <div class="content">
         <div class="panel">
-            <div class="panel-header">Обычные модули</div>
-            <div class="panel-body">
-                <table class="module-table">
-                    <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Статус</th></tr>
-                    </thead>
-                    <tbody id="usualModules"></tbody>
-                </table>
-            </div>
-        </div>
-
-        <div class="panel">
             <div class="panel-header">Сервисные модули</div>
             <div class="panel-body">
-                <div class="warning">⚠ Модули нужны для работы оболочки. Отключение может повлиять на функциональность.</div>
+                <div class="warning">Модули нужны для работы оболочки. Отключение может повлиять на функциональность.</div>
                 <div class="lock-row">
                     <span class="lock-label">Блокировка:</span>
                     <button class="toggle toggle-off" id="lockToggle" onclick="toggleLock()"></button>
                     <span class="lock-label" id="lockStatus">Включена</span>
                 </div>
-                <table class="module-table" id="serviceTable">
+                <table class="module-table">
                     <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Статус</th></tr>
+                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
                     </thead>
                     <tbody id="serviceModules"></tbody>
                 </table>
@@ -143,11 +134,23 @@ MANAGER_TEMPLATE = r"""
         </div>
 
         <div class="panel">
+            <div class="panel-header">Обычные модули</div>
+            <div class="panel-body">
+                <table class="module-table">
+                    <thead>
+                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
+                    </thead>
+                    <tbody id="usualModules"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="panel" id="gamePanel" style="display:none;">
             <div class="panel-header">Игры</div>
             <div class="panel-body">
                 <table class="module-table">
                     <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Статус</th></tr>
+                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
                     </thead>
                     <tbody id="gameModules"></tbody>
                 </table>
@@ -164,18 +167,18 @@ MANAGER_TEMPLATE = r"""
             try {
                 const r = await fetch('/api/modules_list');
                 const data = await r.json();
-                modules = data.modules;
-                currentConfig = data.config;
+                modules = data.modules || [];
+                currentConfig = data.config || {};
                 renderModules();
             } catch(e) {}
         }
 
         function renderModules() {
-            const usualBody = document.getElementById('usualModules');
             const serviceBody = document.getElementById('serviceModules');
+            const usualBody = document.getElementById('usualModules');
             const gameBody = document.getElementById('gameModules');
-            let usualHtml = '';
             let serviceHtml = '';
+            let usualHtml = '';
             let gameHtml = '';
 
             modules.forEach(m => {
@@ -186,16 +189,28 @@ MANAGER_TEMPLATE = r"""
 
                 const btnClass = enabled ? 'toggle-btn on' : 'toggle-btn off';
                 const rowClass = enabled ? '' : 'disabled';
-                const row = '<tr class="' + rowClass + '"><td><strong>' + m.title + '</strong></td><td>' + (m.description || '') + '</td><td><button class="' + btnClass + '" data-name="' + m.name + '" onclick="toggleModule(this)" ' + (lockEnabled && isService ? 'disabled' : '') + '></button></td></tr>';
+                const deleteDisabled = (lockEnabled && isService) ? ' disabled' : '';
+                const row = '<tr class="' + rowClass + '">'
+                    + '<td><strong>' + m.title + '</strong></td>'
+                    + '<td>' + (m.description || '') + '</td>'
+                    + '<td><button class="' + btnClass + '" data-name="' + m.name + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
+                    + '<td><button class="btn-delete" data-name="' + m.name + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
+                    + '</tr>';
 
                 if (type === 'service') serviceHtml += row;
                 else if (type === 'game') gameHtml += row;
                 else usualHtml += row;
             });
 
-            usualBody.innerHTML = usualHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
-            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
-            gameBody.innerHTML = gameHtml || '<tr><td colspan="3" style="color:#999;text-align:center;">Нет игр</td></tr>';
+            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="4" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
+            usualBody.innerHTML = usualHtml || '<tr><td colspan="4" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
+
+            if (gameHtml) {
+                document.getElementById('gamePanel').style.display = '';
+                gameBody.innerHTML = gameHtml;
+            } else {
+                document.getElementById('gamePanel').style.display = 'none';
+            }
         }
 
         function toggleModule(btn) {
@@ -223,6 +238,26 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
+        async function deleteModule(btn) {
+            const name = btn.dataset.name;
+            if (!confirm('Удалить модуль "' + name + '"?')) return;
+            try {
+                const r = await fetch('/api/delete', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({name: name})
+                });
+                const d = await r.json();
+                if (d.status === 'deleted') {
+                    loadModules();
+                } else {
+                    alert('Ошибка: ' + (d.error || 'Unknown'));
+                }
+            } catch(e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
         function toggleLock() {
             lockEnabled = !lockEnabled;
             const toggle = document.getElementById('lockToggle');
@@ -239,8 +274,9 @@ MANAGER_TEMPLATE = r"""
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(currentConfig)
                 });
-                window.parent.postMessage({action: 'restart-shell'}, '*');
-                alert('Настройки сохранены. Shell перезапускается...');
+                setTimeout(() => {
+                    window.parent.postMessage({action: 'restart-shell'}, '*');
+                }, 500);
             } catch(e) {
                 alert('Ошибка сохранения: ' + e.message);
             }
@@ -271,8 +307,33 @@ def api_modules_save():
     data = request.get_json()
     usual = data.get('usual', 'all')
     service = data.get('service', 'all')
-    save_autostart_config(usual, service)
+    game = data.get('game', 'all')
+    save_autostart_config(usual, service, game)
     return jsonify({'status': 'saved'})
+
+
+@app.route('/api/delete', methods=['POST'])
+def api_delete():
+    data = request.get_json()
+    name = data.get('name', '')
+    if not name:
+        return jsonify({'error': 'No name provided'}), 400
+
+    try:
+        requests.post(f'http://127.0.0.1:8080/api/module/{name}/stop', timeout=5)
+    except Exception:
+        pass
+
+    time.sleep(1)
+
+    mod_dir = os.path.join(SHELL_DIR, '_module', name)
+    if os.path.isdir(mod_dir):
+        try:
+            shutil.rmtree(mod_dir)
+            return jsonify({'status': 'deleted'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    return jsonify({'error': 'Not found'}), 404
 
 
 if __name__ == '__main__':

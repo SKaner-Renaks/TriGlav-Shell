@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.2.4'
+VERSION = '1.2.5'
 
 app = Flask(__name__)
 
@@ -50,6 +50,7 @@ MODULE_ORDER = [m.strip() for m in module_order_cfg.get('order', '').split(',') 
 autostart_cfg = dict(config['modules_auto_start']) if 'modules_auto_start' in config else {}
 AUTOSTART_USUAL = autostart_cfg.get('usual', 'all')
 AUTOSTART_SERVICE = autostart_cfg.get('service', 'all')
+AUTOSTART_GAME = autostart_cfg.get('game', 'all')
 
 
 def load_lang(lang_code):
@@ -175,15 +176,14 @@ def is_port_free(port):
 def check_firewall(port):
     try:
         result = subprocess.run(
-            ['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', os.path.join(DATA_DIR, '_ps', '_check_fw.ps1'), str(port)],
+            ['netsh', 'advfirewall', 'firewall', 'show', 'rule',
+             f'name=TriGlav Shell {port}'],
             capture_output=True, timeout=10
         )
-        output = result.stdout.decode('cp866', errors='replace').strip() if result.stdout else ''
-        if 'FOUND' in output:
+        output = result.stdout.decode('cp866', errors='replace')
+        if f'TriGlav Shell {port}' in output:
             return True
-        if 'NONE' in output:
-            return None
-        return None
+        return False
     except Exception:
         return None
 
@@ -499,8 +499,8 @@ def api_settings_reset():
 @app.route('/api/stop', methods=['POST'])
 @login_required
 def api_stop():
-    stop_all_modules()
     def shutdown():
+        stop_all_modules()
         time.sleep(1)
         os._exit(0)
     threading.Thread(target=shutdown, daemon=True).start()
@@ -510,8 +510,8 @@ def api_stop():
 @app.route('/api/restart', methods=['POST'])
 @login_required
 def api_restart():
-    stop_all_modules()
     def restart():
+        stop_all_modules()
         time.sleep(1)
         subprocess.Popen([sys.executable] + sys.argv, cwd=os.getcwd())
         os._exit(0)
@@ -546,17 +546,14 @@ def proxy(port, path):
         content_type = resp.headers.get('content-type', '')
 
         if 'text/html' in content_type:
-            base_tag = f'<base href="/proxy/{port}/">'
-            if b'<head>' in content:
-                content = content.replace(b'<head>', b'<head>' + base_tag.encode(), 1)
-
-            content = content.replace(b"fetch('/", f"fetch('/proxy/{port}/".encode())
-            content = content.replace(b'fetch("/', f'fetch("/proxy/{port}/'.encode())
-            content = content.replace(b"src='/", f"src='/proxy/{port}/".encode())
-            content = content.replace(b'src="/', f'src="/proxy/{port}/'.encode())
-            content = content.replace(b"href='/", f"href='/proxy/{port}/".encode())
-            content = content.replace(b'href="/', f'href="/proxy/{port}/'.encode())
-            content = content.replace(b'action="/', f'action="/proxy/{port}/'.encode())
+            prefix = f'/proxy/{port}/'.encode()
+            content = content.replace(b"fetch('/api/", b"fetch('" + prefix + b"api/")
+            content = content.replace(b'fetch("/api/', b'fetch("' + prefix + b'api/')
+            content = content.replace(b"src='/", b"src='" + prefix)
+            content = content.replace(b'src="/', b'src="' + prefix)
+            content = content.replace(b"href='/", b"href='" + prefix)
+            content = content.replace(b'href="/', b'href="' + prefix)
+            content = content.replace(b'action="/', b'action="' + prefix)
 
         return content, resp.status_code, response_headers
     except Exception as e:
@@ -1083,7 +1080,12 @@ if __name__ == '__main__':
         print(f"    {m.get('title', name):25s} -> :{port}")
 
     def should_autostart(name, mod_type):
-        allowed = AUTOSTART_USUAL if mod_type == 'usual' else AUTOSTART_SERVICE
+        if mod_type == 'service':
+            allowed = AUTOSTART_SERVICE
+        elif mod_type == 'game':
+            allowed = AUTOSTART_GAME
+        else:
+            allowed = AUTOSTART_USUAL
         if allowed.lower() == 'all':
             return True
         return name in [x.strip() for x in allowed.split(',')]

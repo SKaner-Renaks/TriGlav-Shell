@@ -3,6 +3,16 @@
 ## Language
 Communication language — **Russian**. All comments, docs, UI labels — русский.
 
+## Environment
+
+- **ОС**: Windows 10/11, Windows Server 2016+
+- **Git**: установлен по `C:\Program Files\Git\cmd\git.exe` (v2.54.0)
+- **GitHub**: репозиторий `https://github.com/SKaner-Renaks/TriGlav-Shell`
+- **Зеркало**: папка `C:\ars\mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ars\mimo\Task Server`
+- **Синхронизация**: после изменений копировать файлы проекта в `TriGlav-Shell`, затем `git add . && git commit && git push`
+- **Файлы для синхронизации**: `main.py`, `AGENTS.md`, `requirements.txt`, `task.md`, `task_updater.md`, `_data/`, `_module/`
+- **Исключается из синхронизации**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`
+
 ## Task Requirements
 
 Полное ТЗ находится в файле `task.md`. Ниже — статус реализации по состоянию на текущую версию.
@@ -55,7 +65,7 @@ Communication language — **Russian**. All comments, docs, UI labels — рус
 Shell-оболочка управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы к модулям через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell        (port 8080)   VERSION = '1.2.4'
+main.py              Ядро Shell        (port 8080)   VERSION = '1.2.5'
 manifest.json        Манифест Shell
 config.cfg           Глобальные настройки (INI)
 encrypt.py           Шифрование care.env (XOR+base64)
@@ -70,7 +80,9 @@ _module/             Автообнаружение модулей
   snake/             Змейка              (port 5006)   v1.2    type=game
   invaders/          Космические захватчики (port 5005) v1.2    type=game
   _deps_checker/     Проверка зависимостей (port 5007) v1.2.2  type=service
-  _module_manager/   Управление модулями (port 5008)   v1.1    type=service
+  _module_manager/   Управление модулями (port 5008)   v1.2.1  type=service
+  _updater/          Обновления из GitHub (port 5009)  v1.3.1  type=service
+_Download/           Скачанные архивы (auto-created, не синхронизируется)
 ```
 
 ---
