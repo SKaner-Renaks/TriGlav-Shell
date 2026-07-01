@@ -10,7 +10,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.4.0'
+VERSION = '1.4.1'
 
 app = Flask(__name__)
 
@@ -163,10 +163,24 @@ def download_archive():
 
 
 def copy_module_from_repo(module_name, dest_dir):
-    src_dir = os.path.join(EXTRACT_DIR, '_module', module_name)
-    if not os.path.isdir(src_dir):
-        log.error('copy: source not found %s', src_dir)
-        return False, f'Source not found: {src_dir}'
+    # Find actual directory in archive by manifest name
+    src_dir = None
+    mod_base = os.path.join(EXTRACT_DIR, '_module')
+    if os.path.isdir(mod_base):
+        for d in os.listdir(mod_base):
+            mp = os.path.join(mod_base, d, 'manifest.json')
+            if os.path.isfile(mp):
+                try:
+                    with open(mp, 'r', encoding='utf-8') as f:
+                        mf = json.load(f)
+                    if mf.get('name') == module_name:
+                        src_dir = os.path.join(mod_base, d)
+                        break
+                except Exception:
+                    pass
+    if not src_dir or not os.path.isdir(src_dir):
+        log.error('copy: source not found for %s', module_name)
+        return False, f'Source not found for {module_name} in archive'
     log.info('copy: %s -> %s', src_dir, dest_dir)
 
     for attempt in range(3):
