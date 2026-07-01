@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import shutil
 import zipfile
 import argparse
@@ -8,7 +9,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.3'
+VERSION = '1.3.4'
 
 app = Flask(__name__)
 
@@ -502,7 +503,12 @@ DOWNLOADER_TEMPLATE = r"""
                 const r = await fetch('/api/update', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({modules: selected}) });
                 const d = await r.json();
                 hideProgress();
-                showStatus(d.message, d.errors && d.errors.length ? 'error' : 'success');
+                let msg = d.message;
+                if (d.results) {
+                    const skipped = d.results.filter(r => r.status === 'skipped');
+                    if (skipped.length) msg += ' (Skipped: ' + skipped.map(s=>s.name).join(', ') + ')';
+                }
+                showStatus(msg, d.errors && d.errors.length ? 'error' : 'success');
                 scanRepo();
             } catch(e) { hideProgress(); showStatus('Ошибка: ' + e.message, 'error'); }
             document.getElementById('installBtn').disabled = false;
@@ -610,9 +616,16 @@ def api_update():
         name = m['name']
         mtype = m.get('type', 'usual')
 
-        if mtype in ('shell', 'service'):
-            results.append({'name': name, 'status': 'skipped', 'reason': 'requires offline mode'})
+        if mtype == 'shell':
+            results.append({'name': name, 'status': 'skipped', 'reason': 'shell requires manual restart'})
             continue
+
+        if mtype == 'service':
+            try:
+                requests.post(f'http://127.0.0.1:8080/api/module/{name}/stop', timeout=5)
+            except Exception:
+                pass
+            time.sleep(1)
 
         dest_dir = os.path.join(SHELL_DIR, '_module', name)
         if not os.path.isdir(dest_dir):
@@ -620,6 +633,13 @@ def api_update():
             continue
 
         ok, msg = copy_module_from_repo(name, dest_dir)
+
+        if mtype == 'service' and ok:
+            try:
+                requests.post(f'http://127.0.0.1:8080/api/module/{name}/start', timeout=10)
+            except Exception:
+                pass
+
         if ok:
             results.append({'name': name, 'status': 'updated'})
         else:
