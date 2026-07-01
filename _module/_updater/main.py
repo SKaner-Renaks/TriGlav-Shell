@@ -8,7 +8,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.1'
+VERSION = '1.3.2'
 
 app = Flask(__name__)
 
@@ -90,6 +90,18 @@ def get_repo_modules():
             except Exception:
                 pass
 
+    # Shell manifest отдельно из _data/
+    shell_manifest_path = os.path.join(EXTRACT_DIR, '_data', 'manifest.json')
+    if os.path.exists(shell_manifest_path):
+        try:
+            with open(shell_manifest_path, 'r', encoding='utf-8') as f:
+                shell = json.load(f)
+            shell['_repo_name'] = 'shell'
+            shell['_repo_path'] = os.path.join(EXTRACT_DIR, '_data')
+            modules.insert(0, shell)
+        except Exception:
+            pass
+
     return modules, None
 
 
@@ -98,6 +110,8 @@ def download_archive():
     download_state = {'status': 'downloading', 'percent': 0, 'message': 'Starting download...'}
 
     try:
+        if os.path.exists(DOWNLOAD_DIR):
+            shutil.rmtree(DOWNLOAD_DIR)
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
         r = requests.get(ARCHIVE_URL, stream=True, timeout=120)
@@ -117,9 +131,6 @@ def download_archive():
         download_state['status'] = 'extracting'
         download_state['percent'] = 0
         download_state['message'] = 'Extracting archive...'
-
-        if os.path.exists(EXTRACT_DIR):
-            shutil.rmtree(EXTRACT_DIR)
 
         with zipfile.ZipFile(ZIP_PATH, 'r') as zf:
             zf.extractall(DOWNLOAD_DIR)
@@ -202,6 +213,9 @@ DOWNLOADER_TEMPLATE = r"""
         .success-msg { background:#1a3d24; border:1px solid #21bf4b; border-radius:3px; padding:8px 12px; margin-bottom:12px; color:#21bf4b; font-size:12px; }
         #statusMessage { display:none; }
         #downloadInfo { font-size:11px; color:#999; margin-top:4px; }
+        .ver-ok { color:#21bf4b; font-weight:600; }
+        .ver-new { color:#ff6c59; font-weight:600; }
+        .ver-old { color:#ffcc00; font-weight:600; }
     </style>
 </head>
 <body>
@@ -227,7 +241,7 @@ DOWNLOADER_TEMPLATE = r"""
             <div class="panel-body" style="padding:0;">
                 <table class="module-table">
                     <thead>
-                        <tr><th><input type="checkbox" id="checkAllInstalled" onchange="toggleAllInstalled()"></th><th>Type</th><th>Status</th><th>Name</th><th>Title</th><th>Current Ver</th><th>Repo Ver</th></tr>
+                        <tr><th><input type="checkbox" id="checkAllInstalled" onchange="toggleAllInstalled()"></th><th>Type</th><th>Status</th><th>Name</th><th>Title</th><th>Local</th><th>Repo</th><th>Status</th></tr>
                     </thead>
                     <tbody id="installedBody"></tbody>
                 </table>
@@ -384,11 +398,27 @@ DOWNLOADER_TEMPLATE = r"""
             document.getElementById('scanBtn').disabled = false;
         }
 
+        function compareVersions(local, repo) {
+            if (!repo || repo === '-') return '';
+            if (!local) return '';
+            const lp = local.split('.').map(Number);
+            const rp = repo.split('.').map(Number);
+            for (let i = 0; i < Math.max(lp.length, rp.length); i++) {
+                const l = lp[i] || 0;
+                const r = rp[i] || 0;
+                if (l > r) return 'old';
+                if (l < r) return 'new';
+            }
+            return 'ok';
+        }
+
         function buildInstalledTable() {
             const tbody = document.getElementById('installedBody');
             let html = '';
             const sorted = [...localModules].sort((a,b) => {
-                const order = {shell:0, service:1, usual:2, game:3};
+                if (a._is_shell) return -1;
+                if (b._is_shell) return 1;
+                const order = {service:1, usual:2, game:3};
                 return (order[a.type]||9) - (order[b.type]||9);
             });
             sorted.forEach(m => {
@@ -397,15 +427,19 @@ DOWNLOADER_TEMPLATE = r"""
                 const enabled = isModuleEnabled(m.name, m.type || 'usual');
                 const statusClass = enabled ? 'status-on' : 'status-off';
                 const statusText = enabled ? 'on' : 'off';
+                const verStatus = compareVersions(m.version, repoVer);
+                const verClass = verStatus === 'ok' ? 'ver-ok' : verStatus === 'new' ? 'ver-new' : verStatus === 'old' ? 'ver-old' : '';
+                const verText = verStatus === 'ok' ? 'Ok' : verStatus === 'new' ? 'Need Update' : verStatus === 'old' ? 'Attention' : '-';
                 html += '<tr><td><input type="checkbox" data-name="'+m.name+'" data-type="'+(m.type||'usual')+'" class="installed-cb"></td>';
                 html += '<td>'+(m.type||'usual')+'</td>';
                 html += '<td class="'+statusClass+'">'+statusText+'</td>';
                 html += '<td>'+m.name+'</td>';
                 html += '<td>'+m.title+'</td>';
                 html += '<td>'+(m.version||'?')+'</td>';
-                html += '<td>'+repoVer+'</td></tr>';
+                html += '<td>'+repoVer+'</td>';
+                html += '<td class="'+verClass+'">'+verText+'</td></tr>';
             });
-            tbody.innerHTML = html || '<tr><td colspan="7" style="text-align:center;color:#999;">No data. Press Get to download.</td></tr>';
+            tbody.innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:#999;">No data. Press Get to download.</td></tr>';
         }
 
         function buildNewTable() {
