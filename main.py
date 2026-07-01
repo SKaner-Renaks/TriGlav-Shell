@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.2.5'
+VERSION = '1.2.6'
 
 app = Flask(__name__)
 
@@ -236,6 +236,9 @@ def discover_modules():
     return modules
 
 
+module_log_enabled = {}
+
+
 def start_module(manifest):
     name = manifest['name']
     if name in module_processes and module_processes[name].poll() is None:
@@ -250,6 +253,8 @@ def start_module(manifest):
     host = '127.0.0.1' if ENVIRONMENT == 'production' else '0.0.0.0'
 
     cmd = [sys.executable, main_py, '--host', host, '--port', str(port)]
+    if module_log_enabled.get(name):
+        cmd.append('--log')
     try:
         proc = subprocess.Popen(cmd, cwd=mod_path)
         module_processes[name] = proc
@@ -329,7 +334,8 @@ def index():
     modules = discover_modules()
     server_info = get_server_info()
     return render_template_string(SHELL_TEMPLATE, version=VERSION, server_info=server_info,
-                                  modules=modules, module_ports=module_ports, lang=tr)
+                                  modules=modules, module_ports=module_ports, lang=tr,
+                                  environment=ENVIRONMENT)
 
 
 @app.route('/api/modules')
@@ -410,6 +416,23 @@ def api_module_restart_elevated(name):
         return jsonify({'status': 'elevated', 'port': port})
     except Exception as e:
         return jsonify({'error': f'Failed to elevate: {str(e)}'}), 500
+
+
+@app.route('/api/module/<name>/log', methods=['POST'])
+@login_required
+def api_module_log(name):
+    if ENVIRONMENT != 'development':
+        return jsonify({'error': 'only in development mode'}), 400
+    data = request.get_json()
+    enabled = data.get('enabled', False)
+    module_log_enabled[name] = enabled
+    stop_module(name)
+    time.sleep(1)
+    modules = discover_modules()
+    manifest = next((m for m in modules if m['name'] == name), None)
+    if manifest:
+        start_module(manifest)
+    return jsonify({'status': 'ok', 'log': enabled})
 
 
 @app.route('/api/settings', methods=['GET'])
@@ -701,6 +724,9 @@ SHELL_TEMPLATE = r"""
             <span id="headerTime" style="font-size:18px;color:#47a8ff;font-weight:600;margin-right:12px;"></span>
             <button class="btn btn-default" onclick="openSettings()" title="Settings"><img src="/_images/gear-svgrepo-com.svg" style="width:16px;height:16px;vertical-align:middle;filter:invert(1);"></button>
             <a href="/logout" class="btn btn-default" style="text-decoration:none;text-align:center;">Logout</a>
+            {% if environment == 'development' %}
+            <button class="btn btn-default" onclick="restartShell()">Restart</button>
+            {% endif %}
             <button class="btn btn-danger" onclick="shutdownShell()">Shutdown</button>
         </div>
     </div>
@@ -716,6 +742,11 @@ SHELL_TEMPLATE = r"""
                 <span id="module-name"></span>
                 <span class="port" id="module-port"></span>
                 <button class="btn btn-sm btn-default" onclick="restartModule()">Restart</button>
+                {% if environment == 'development' %}
+                <label style="font-size:11px;color:#999;margin-left:12px;cursor:pointer;">
+                    <input type="checkbox" id="logToggle" onchange="toggleLog()" style="accent-color:#0057b3;"> Log
+                </label>
+                {% endif %}
             </div>
             <iframe id="module-frame" style="display:none;"></iframe>
             <div id="placeholder">Select a module</div>
@@ -852,6 +883,27 @@ SHELL_TEMPLATE = r"""
             try {
                 await fetch('/api/stop', { method: 'POST' });
                 document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Shell stopped</div>';
+            } catch(e) {}
+        }
+
+        async function restartShell() {
+            if (!confirm('Restart Shell and all modules?')) return;
+            try {
+                await fetch('/api/restart', { method: 'POST' });
+                document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Restarting Shell...</div>';
+                setTimeout(() => location.reload(), 5000);
+            } catch(e) {}
+        }
+
+        async function toggleLog() {
+            if (!currentModule) return;
+            const enabled = document.getElementById('logToggle').checked;
+            try {
+                await fetch('/api/module/' + currentModule + '/log', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({enabled: enabled})
+                });
             } catch(e) {}
         }
 
