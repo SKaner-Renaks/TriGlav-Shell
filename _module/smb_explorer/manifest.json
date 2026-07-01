@@ -1,0 +1,19 @@
+{
+  "name": "smb_explorer",
+  "title": "SMB Explorer",
+  "version": "1.0",
+  "description": "Просмотр SMB-ресурсов и открытых файлов",
+  "type": "usual",
+  "requires_admin": true,
+  "current_port": 5010,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "current_settings": {
+    "refresh_interval": 0
+  },
+  "default_settings": {
+    "refresh_interval": 0
+  }
+}
