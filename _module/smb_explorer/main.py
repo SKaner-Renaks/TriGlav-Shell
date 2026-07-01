@@ -5,7 +5,7 @@ import argparse
 import subprocess
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.1'
+VERSION = '1.2'
 
 app = Flask(__name__)
 
@@ -113,6 +113,12 @@ TEMPLATE = r"""
         .empty { text-align:center; color:#666; padding:40px; }
         .spinner { display:inline-block; width:20px; height:20px; border:2px solid #404040; border-top-color:#47a8ff; border-radius:50%; animation:spin 0.7s linear infinite; }
         @keyframes spin { to { transform:rotate(360deg); } }
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100; justify-content:center; align-items:center; }
+        .modal-overlay.active { display:flex; }
+        .modal { background:#262626; border:1px solid #404040; border-radius:4px; padding:30px; text-align:center; }
+        .spinner-lg { display:inline-block; width:40px; height:40px; border:3px solid #404040; border-top-color:#47a8ff; border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:12px; }
+        .modal-text { color:#999; font-size:13px; margin-top:8px; }
+        .section-header { padding:8px 12px; background:#1f1f1f; color:#47a8ff; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #333; }
     </style>
 </head>
 <body>
@@ -131,18 +137,30 @@ TEMPLATE = r"""
             <div class="tab" onclick="switchTab('files')">Open Files</div>
         </div>
 
-        <div id="tab-shares" class="panel">
-            <div class="panel-header">
-                <span>SMB Shares</span>
-                <span id="sharesCount"></span>
+        <div id="tab-shares">
+            <div class="panel">
+                <div class="panel-header">
+                    <span>User Shares</span>
+                    <span id="sharesUserCount"></span>
+                </div>
+                <div class="panel-body">
+                    <table>
+                        <thead><tr><th>Name</th><th>Path</th><th>Description</th><th>Users</th><th>Permissions</th></tr></thead>
+                        <tbody id="sharesUser"></tbody>
+                    </table>
+                </div>
             </div>
-            <div class="panel-body">
-                <table>
-                    <thead>
-                        <tr><th>Name</th><th>Path</th><th>Description</th><th>Users</th><th>Permissions</th></tr>
-                    </thead>
-                    <tbody id="sharesBody"></tbody>
-                </table>
+            <div class="panel" style="margin-top:12px;">
+                <div class="panel-header">
+                    <span>System Shares</span>
+                    <span id="sharesSystemCount"></span>
+                </div>
+                <div class="panel-body">
+                    <table>
+                        <thead><tr><th>Name</th><th>Path</th><th>Description</th><th>Users</th><th>Permissions</th></tr></thead>
+                        <tbody id="sharesSystem"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -178,11 +196,26 @@ TEMPLATE = r"""
         </div>
     </div>
 
+    <div class="modal-overlay" id="loadingModal">
+        <div class="modal">
+            <div class="spinner-lg"></div>
+            <div class="modal-text" id="loadingText">Scanning SMB shares...</div>
+        </div>
+    </div>
+
     <script>
         let currentTab = 'shares';
         let sharesData = [];
         let filesData = [];
         let timerInterval = null;
+
+        function showLoading(text) {
+            document.getElementById('loadingText').textContent = text || 'Scanning...';
+            document.getElementById('loadingModal').classList.add('active');
+        }
+        function hideLoading() {
+            document.getElementById('loadingModal').classList.remove('active');
+        }
 
         function switchTab(tab) {
             currentTab = tab;
@@ -201,12 +234,14 @@ TEMPLATE = r"""
         }
 
         async function loadShares() {
+            showLoading('Scanning SMB shares...');
             try {
                 const r = await fetch('/api/shares');
                 sharesData = await r.json();
                 renderShares();
                 updateShareDropdown();
             } catch(e) {}
+            hideLoading();
         }
 
         function updateShareDropdown() {
@@ -250,22 +285,29 @@ TEMPLATE = r"""
         }
 
         function renderShares() {
-            const tbody = document.getElementById('sharesBody');
-            document.getElementById('sharesCount').textContent = sharesData.length + ' shares';
-            if (!sharesData.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty">No shares found</td></tr>';
-                return;
+            const userBody = document.getElementById('sharesUser');
+            const sysBody = document.getElementById('sharesSystem');
+            const custom = sharesData.filter(s => !s.is_special);
+            const system = sharesData.filter(s => s.is_special);
+
+            document.getElementById('sharesUserCount').textContent = custom.length + ' shares';
+            document.getElementById('sharesSystemCount').textContent = system.length + ' shares';
+
+            function renderRows(data) {
+                if (!data.length) return '<tr><td colspan="5" class="empty">No shares</td></tr>';
+                let html = '';
+                data.forEach(s => {
+                    const perms = s.permissions.map(p => {
+                        const cls = p.right === 'Full' ? 'tag-full' : p.right === 'Change' ? 'tag-change' : 'tag-read';
+                        return '<span class="tag ' + cls + '">' + p.account + ': ' + p.right + '</span>';
+                    }).join('');
+                    html += '<tr><td><strong>' + s.name + '</strong></td><td>' + s.path + '</td><td>' + (s.description||'') + '</td><td>' + s.current_users + '</td><td>' + perms + '</td></tr>';
+                });
+                return html;
             }
-            let html = '';
-            sharesData.forEach(s => {
-                const perms = s.permissions.map(p => {
-                    const cls = p.right === 'Full' ? 'tag-full' : p.right === 'Change' ? 'tag-change' : 'tag-read';
-                    return '<span class="tag ' + cls + '">' + p.account + ': ' + p.right + '</span>';
-                }).join('');
-                const marker = s.is_special ? ' <span style="color:#666;font-size:10px;">[system]</span>' : '';
-                html += '<tr><td><strong>' + s.name + '</strong>' + marker + '</td><td>' + s.path + '</td><td>' + (s.description||'') + '</td><td>' + s.current_users + '</td><td>' + perms + '</td></tr>';
-            });
-            tbody.innerHTML = html;
+
+            userBody.innerHTML = renderRows(custom);
+            sysBody.innerHTML = renderRows(system);
         }
 
         function filterFiles() {
