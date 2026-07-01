@@ -3,13 +3,14 @@ import json
 import time
 import shutil
 import zipfile
+import logging
 import argparse
 import requests
 import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.7'
+VERSION = '1.3.8'
 
 app = Flask(__name__)
 
@@ -22,6 +23,18 @@ ZIP_PATH = os.path.join(DOWNLOAD_DIR, 'repo.zip')
 EXTRACT_DIR = os.path.join(DOWNLOAD_DIR, 'TriGlav-Shell-main')
 
 download_state = {'status': 'idle', 'percent': 0, 'message': ''}
+
+log = logging.getLogger('updater')
+log.setLevel(logging.DEBUG)
+
+
+def setup_log():
+    os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+    fh = logging.FileHandler(os.path.join(DOWNLOAD_DIR, 'updater.log'), encoding='utf-8')
+    fh.setLevel(logging.DEBUG)
+    fmt = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    fh.setFormatter(fmt)
+    log.addHandler(fh)
 
 
 def load_config():
@@ -109,10 +122,12 @@ def get_repo_modules():
 def download_archive():
     global download_state
     download_state = {'status': 'downloading', 'percent': 0, 'message': 'Starting download...'}
+    log.info('download: start %s', ARCHIVE_URL)
 
     try:
         if os.path.exists(DOWNLOAD_DIR):
             shutil.rmtree(DOWNLOAD_DIR)
+            log.info('download: cleaned _Download')
         os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
         r = requests.get(ARCHIVE_URL, stream=True, timeout=120)
@@ -137,6 +152,7 @@ def download_archive():
             zf.extractall(DOWNLOAD_DIR)
 
         download_state = {'status': 'done', 'percent': 100, 'message': 'Archive ready'}
+        log.info('download: done, zip=%dKB', os.path.getsize(ZIP_PATH) // 1024)
 
     except requests.exceptions.ConnectionError:
         download_state = {'status': 'error', 'percent': 0, 'message': 'No connection to GitHub'}
@@ -149,7 +165,9 @@ def download_archive():
 def copy_module_from_repo(module_name, dest_dir):
     src_dir = os.path.join(EXTRACT_DIR, '_module', module_name)
     if not os.path.isdir(src_dir):
+        log.error('copy: source not found %s', src_dir)
         return False, f'Source not found: {src_dir}'
+    log.info('copy: %s -> %s', src_dir, dest_dir)
 
     for attempt in range(3):
         try:
@@ -165,6 +183,7 @@ def copy_module_from_repo(module_name, dest_dir):
                 df = os.path.join(dest_dir, rel)
                 if os.path.exists(df):
                     copied += 1
+            log.info('copy: done %d/%d files', copied, len(src_files))
             return True, f'copied {copied}/{len(src_files)} files'
         except PermissionError:
             if attempt < 2:
@@ -643,30 +662,40 @@ def api_update():
     for m in modules:
         name = m['name']
         mtype = m.get('type', 'usual')
+        log.info('update: module=%s type=%s', name, mtype)
 
         if mtype == 'shell':
+            log.info('update: skip shell')
             results.append({'name': name, 'status': 'skipped', 'reason': 'shell requires manual restart'})
             continue
 
         if mtype == 'service':
             try:
-                requests.post(f'http://127.0.0.1:8080/api/module/{name}/stop', timeout=5)
-            except Exception:
-                pass
+                url = f'http://127.0.0.1:8080/api/module/{name}/stop'
+                log.info('update: stop %s', url)
+                r = requests.post(url, timeout=5)
+                log.info('update: stop -> %d', r.status_code)
+            except Exception as e:
+                log.error('update: stop failed: %s', e)
             time.sleep(3)
 
         dest_dir = os.path.join(SHELL_DIR, '_module', name)
         if not os.path.isdir(dest_dir):
+            log.error('update: dest not found %s', dest_dir)
             results.append({'name': name, 'status': 'not_found'})
             continue
 
         ok, msg = copy_module_from_repo(name, dest_dir)
+        log.info('update: copy result ok=%s msg=%s', ok, msg)
 
         if mtype == 'service' and ok:
             try:
-                requests.post(f'http://127.0.0.1:8080/api/module/{name}/start', timeout=10)
-            except Exception:
-                pass
+                url = f'http://127.0.0.1:8080/api/module/{name}/start'
+                log.info('update: start %s', url)
+                r = requests.post(url, timeout=10)
+                log.info('update: start -> %d', r.status_code)
+            except Exception as e:
+                log.error('update: start failed: %s', e)
 
         if ok:
             results.append({'name': name, 'status': 'updated', 'info': msg})
@@ -684,6 +713,9 @@ def api_update():
 
 
 if __name__ == '__main__':
+    setup_log()
+    log.info('=== Updater %s started ===', VERSION)
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5009)
