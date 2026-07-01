@@ -154,6 +154,36 @@ service = all                  # или: deps_checker
 
 ---
 
+## Логирование
+
+Логирование работает **только в Development mode**.
+
+### Включение
+В Development mode при выборе модуля в content header отображается чекбокс **Log**. При включении модуль перезапускается с флагом `--log`.
+
+### Как работает
+- Каждый модуль принимает `--log` через argparse
+- При `--log` модуль пишет лог в `module.log` в своей папке
+- Лог-формат: `2026-07-01 12:00:00 [INFO] Module started`
+- Уровень: DEBUG
+
+### Файлы логов
+```
+_module/monitor/module.log
+_module/control/module.log
+_module/task_scheduler/module.log
+_module/_module_manager/module.log
+_module/_updater/updater.log
+_module/_deps_checker/module.log
+_module/snake/module.log
+_module/invaders/module.log
+```
+
+### Production mode
+Логирование отключено. Флаг `--log` не передаётся. Лог-файлы не создаются.
+
+---
+
 ## Running
 
 ```bash

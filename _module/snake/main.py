@@ -1,4 +1,6 @@
+import os
 import argparse
+import logging
 from flask import Flask, render_template_string
 
 VERSION = '1.2'
@@ -467,7 +469,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5003)
+    parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
+
+    if args.log:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        logging.basicConfig(filename=log_path, level=logging.DEBUG,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
+        logging.info('Snake %s started', VERSION)
 
     print(f"Snake {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)

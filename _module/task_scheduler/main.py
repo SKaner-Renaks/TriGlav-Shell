@@ -3,6 +3,7 @@ import json
 import threading
 import time
 import os
+import logging
 import socket
 import re
 import argparse
@@ -1101,7 +1102,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
+
+    if args.log:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        logging.basicConfig(filename=log_path, level=logging.DEBUG,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
+        logging.info('Task Scheduler %s started', VERSION)
+
     print("=" * 50)
     print(f"  Task Scheduler {VERSION} - Web Server")
     print(f"  http://{args.host}:{args.port}")

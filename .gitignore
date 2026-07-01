@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+module.log
+updater.log
+_Backup/
+_Download/
+screenshot.PNG

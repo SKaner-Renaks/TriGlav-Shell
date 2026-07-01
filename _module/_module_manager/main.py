@@ -2,6 +2,7 @@ import os
 import json
 import shutil
 import time
+import logging
 import argparse
 import configparser
 import requests
@@ -340,6 +341,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5008)
+    parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
+
+    if args.log:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        logging.basicConfig(filename=log_path, level=logging.DEBUG,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
+        logging.info('Module Manager %s started', VERSION)
+
     print(f"Module Manager {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)

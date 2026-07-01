@@ -3,6 +3,7 @@ import json
 import time
 import platform
 import subprocess
+import logging
 import socket
 import argparse
 from datetime import datetime
@@ -825,7 +826,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5001)
+    parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
+
+    if args.log:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        logging.basicConfig(filename=log_path, level=logging.DEBUG,
+                            format='%(asctime)s [%(levelname)s] %(message)s')
+        logging.info('Monitor %s started', VERSION)
+
     print("=" * 50)
     print(f"  Monitor {VERSION} - System Dashboard")
     print(f"  http://{args.host}:{args.port}")
