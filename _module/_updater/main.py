@@ -9,7 +9,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.5'
+VERSION = '1.3.6'
 
 app = Flask(__name__)
 
@@ -153,16 +153,7 @@ def copy_module_from_repo(module_name, dest_dir):
 
     for attempt in range(3):
         try:
-            os.makedirs(dest_dir, exist_ok=True)
-            for item in os.listdir(src_dir):
-                s = os.path.join(src_dir, item)
-                d = os.path.join(dest_dir, item)
-                if os.path.isdir(s):
-                    if os.path.exists(d):
-                        shutil.rmtree(d)
-                    shutil.copytree(s, d)
-                else:
-                    shutil.copy2(s, d)
+            _copy_tree(src_dir, dest_dir)
             return True, 'ok'
         except PermissionError:
             if attempt < 2:
@@ -173,6 +164,17 @@ def copy_module_from_repo(module_name, dest_dir):
             return False, str(e)
 
     return False, 'Failed after retries'
+
+
+def _copy_tree(src, dst):
+    os.makedirs(dst, exist_ok=True)
+    for item in os.listdir(src):
+        s = os.path.join(src, item)
+        d = os.path.join(dst, item)
+        if os.path.isdir(s):
+            _copy_tree(s, d)
+        else:
+            shutil.copy2(s, d)
 
 
 DOWNLOADER_TEMPLATE = r"""
