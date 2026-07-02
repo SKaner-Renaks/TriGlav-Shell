@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '2.0'
+VERSION = '2.1'
 
 app = Flask(__name__)
 
@@ -63,18 +63,8 @@ def get_shares():
 def get_open_files():
     ps = """Get-SmbOpenFile | ForEach-Object {
         $file = $_
-        $access = 'Read'
         $item = $null
         try { $item = Get-Item -LiteralPath $file.Path -ErrorAction Stop } catch {}
-        if ($item) {
-            try {
-                $fs = [System.IO.File]::Open($file.Path, 'Open', 'ReadWrite', 'None')
-                $fs.Close()
-                $access = 'Write'
-            } catch {
-                $access = 'Read'
-            }
-        }
         [PSCustomObject]@{
             FileId = $file.FileId
             Path = $file.Path
@@ -83,7 +73,6 @@ def get_open_files():
             ShareRelativePath = $file.ShareRelativePath
             Locks = $file.Locks
             IsFolder = if ($item) { $item.PSIsContainer } else { $false }
-            Access = $access
         }
     } | ConvertTo-Json"""
     files = run_ps(ps)
@@ -91,15 +80,16 @@ def get_open_files():
         files = [files]
     result = []
     for f in files:
+        locks = int(f.get('Locks', 0) or 0)
         result.append({
             'file_id': f.get('FileId', ''),
             'path': f.get('Path', ''),
             'client_computer': f.get('ClientComputerName', ''),
             'client_user': f.get('ClientUserName', ''),
             'share_path': f.get('ShareRelativePath', ''),
-            'locks': f.get('Locks', 0),
+            'locks': locks,
             'is_folder': f.get('IsFolder', False),
-            'access': f.get('Access', 'Read')
+            'access': 'Write' if locks > 0 else 'Read'
         })
     return result
 
