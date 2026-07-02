@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '2.3'
+VERSION = '2.4'
 
 app = Flask(__name__)
 
@@ -238,7 +238,7 @@ TEMPLATE = r"""
                     <option value="300">5min</option>
                     <option value="600">10min</option>
                 </select>
-                <button class="btn btn-danger btn-sm" onclick="closeSelected()">Close</button>
+                <button class="btn btn-danger btn-sm" onclick="closeSelected()" style="margin-left:auto;">Close</button>
             </div>
             <div class="panel-body">
                 <table>
@@ -460,8 +460,9 @@ TEMPLATE = r"""
         function renderFiles(data) {
             const tbody = document.getElementById('filesBody');
             document.getElementById('filesCount').textContent = data.length + ' files';
+            const checked = new Set([...document.querySelectorAll('.file-cb:checked')].map(cb => cb.dataset.id));
             if (!data.length) {
-                tbody.innerHTML = '<tr><td colspan="5" class="empty">No open files</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="empty">No open files</td></tr>';
                 return;
             }
             let html = '';
@@ -469,7 +470,8 @@ TEMPLATE = r"""
                 const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
                 const acc = f.access || 'Read';
                 const accCls = acc === 'Write' ? 'tag-change' : 'tag-full';
-                html += '<tr><td><input type="checkbox" class="file-cb" data-id="' + f.file_id + '"></td><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
+                const chk = checked.has(f.file_id) ? ' checked' : '';
+                html += '<tr><td><input type="checkbox" class="file-cb" data-id="' + f.file_id + '"' + chk + '></td><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
@@ -566,7 +568,8 @@ def api_close_files():
     file_ids = data.get('file_ids', [])
     results = []
     for fid in file_ids:
-        run_ps(f'Close-SmbOpenFile -FileId {fid} -Force -ErrorAction SilentlyContinue')
+        ps = f'Close-SmbOpenFile -FileId "{fid}" -Force -ErrorAction Stop'
+        out = run_ps(ps)
         results.append({'file_id': fid, 'status': 'closed'})
     return jsonify({'results': results})
 
