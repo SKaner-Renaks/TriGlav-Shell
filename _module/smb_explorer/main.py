@@ -159,6 +159,10 @@ TEMPLATE = r"""
         .progress-container { width: 100%; background: #404040; border-radius: 3px; height: 12px; margin-top: 15px; overflow: hidden; display: none; }
         .progress-bar { width: 0%; height: 100%; background: #21bf4b; transition: width 0.1s ease; }
         .progress-detail { font-size: 11px; color: #aaa; margin-top: 6px; text-align: center; display: none; }
+        #tab-files table th:first-child, #tab-files table td:first-child { width: 40px; text-align: center; padding-right: 0; }
+        #tab-files table th:nth-child(2), #tab-files table td:nth-child(2) { width: auto; white-space: normal; word-break: break-all; }
+        #tab-files table td { white-space: nowrap; }
+        #tab-files table td:nth-child(2) { white-space: normal; }
     </style>
 </head>
 <body>
