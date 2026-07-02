@@ -5,9 +5,9 @@ import argparse
 import subprocess
 import threading
 from datetime import datetime
-from flask import Flask, render_template_string, jsonify
+from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.4'
+VERSION = '2.5'
 
 app = Flask(__name__)
 
@@ -470,7 +470,7 @@ TEMPLATE = r"""
                 const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
                 const acc = f.access || 'Read';
                 const accCls = acc === 'Write' ? 'tag-change' : 'tag-full';
-                const chk = checked.has(f.file_id) ? ' checked' : '';
+                const chk = checked.has(String(f.file_id)) ? ' checked' : '';
                 html += '<tr><td><input type="checkbox" class="file-cb" data-id="' + f.file_id + '"' + chk + '></td><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
@@ -495,11 +495,8 @@ TEMPLATE = r"""
             const ids = [...document.querySelectorAll('.file-cb:checked')].map(cb => cb.dataset.id);
             if (!ids.length) { alert('Select files to close'); return; }
             if (!confirm('Close ' + ids.length + ' file(s)?')) return;
-            showProgress('Closing files...');
-            document.getElementById('progressFill').style.width = '0%';
+            showLoading('Closing files...');
             for (let i = 0; i < ids.length; i++) {
-                document.getElementById('progressFill').style.width = ((i+1)/ids.length*100) + '%';
-                document.getElementById('progressDetail').textContent = (i+1) + '/' + ids.length;
                 try {
                     await fetch('/api/close-files', {
                         method:'POST', headers:{'Content-Type':'application/json'},
@@ -507,7 +504,7 @@ TEMPLATE = r"""
                     });
                 } catch(e) {}
             }
-            hideProgress();
+            hideLoading();
             await loadFiles();
         }
 
