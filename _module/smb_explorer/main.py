@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.5'
+VERSION = '2.6'
 
 app = Flask(__name__)
 
@@ -156,6 +156,9 @@ TEMPLATE = r"""
         .toggle-btn { padding:4px 10px; background:#333; border:none; color:#999; font-size:11px; cursor:pointer; font-family:inherit; }
         .toggle-btn + .toggle-btn { border-left:1px solid #404040; }
         .toggle-btn.active { background:#0057b3; color:#fff; }
+        .progress-container { width: 100%; background: #404040; border-radius: 3px; height: 12px; margin-top: 15px; overflow: hidden; display: none; }
+        .progress-bar { width: 0%; height: 100%; background: #21bf4b; transition: width 0.1s ease; }
+        .progress-detail { font-size: 11px; color: #aaa; margin-top: 6px; text-align: center; display: none; }
     </style>
 </head>
 <body>
@@ -252,9 +255,13 @@ TEMPLATE = r"""
     </div>
 
     <div class="modal-overlay" id="loadingModal">
-        <div class="modal">
-            <div class="spinner-lg"></div>
+        <div class="modal" style="min-width: 320px; max-width: 500px;">
+            <div class="spinner-lg" id="modalSpinner"></div>
             <div class="modal-text" id="loadingText">Scanning SMB shares...</div>
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressFill"></div>
+            </div>
+            <div class="progress-detail" id="progressDetail"></div>
         </div>
     </div>
 
@@ -283,9 +290,23 @@ TEMPLATE = r"""
             filterFiles();
         }
 
-        function showLoading(text) {
+        function showLoading(text, showProgress) {
             document.getElementById('loadingText').textContent = text || 'Scanning...';
             document.getElementById('loadingModal').classList.add('active');
+            const pContainer = document.getElementById('progressContainer');
+            const pDetail = document.getElementById('progressDetail');
+            const spinner = document.getElementById('modalSpinner');
+            if (showProgress) {
+                pContainer.style.display = 'block';
+                pDetail.style.display = 'block';
+                spinner.style.display = 'none';
+                document.getElementById('progressFill').style.width = '0%';
+                pDetail.textContent = '';
+            } else {
+                pContainer.style.display = 'none';
+                pDetail.style.display = 'none';
+                spinner.style.display = 'inline-block';
+            }
         }
         function hideLoading() {
             document.getElementById('loadingModal').classList.remove('active');
@@ -492,18 +513,32 @@ TEMPLATE = r"""
         }
 
         async function closeSelected() {
-            const ids = [...document.querySelectorAll('.file-cb:checked')].map(cb => cb.dataset.id);
-            if (!ids.length) { alert('Select files to close'); return; }
-            if (!confirm('Close ' + ids.length + ' file(s)?')) return;
-            showLoading('Closing files...');
-            for (let i = 0; i < ids.length; i++) {
+            const checkedBoxes = [...document.querySelectorAll('.file-cb:checked')];
+            if (!checkedBoxes.length) { alert('Select files to close'); return; }
+            if (!confirm('Close ' + checkedBoxes.length + ' file(s)?')) return;
+            const total = checkedBoxes.length;
+            showLoading('Closing files...', true);
+            for (let i = 0; i < total; i++) {
+                const cb = checkedBoxes[i];
+                const fid = cb.dataset.id;
+                const row = cb.closest('tr');
+                const fileName = row ? row.querySelectorAll('td')[1].textContent : 'Unknown';
+                const shortName = fileName.length > 40 ? '...' + fileName.slice(-37) : fileName;
+                const percent = Math.round((i / total) * 100);
+                document.getElementById('progressFill').style.width = percent + '%';
+                document.getElementById('progressDetail').innerHTML =
+                    'Processing: ' + (i+1) + ' of ' + total + ' (' + percent + '%)<br>' +
+                    '<span style="color:#ff6c59; font-size:11px;">Closing: ' + shortName + '</span>';
                 try {
                     await fetch('/api/close-files', {
                         method:'POST', headers:{'Content-Type':'application/json'},
-                        body:JSON.stringify({file_ids:[ids[i]]})
+                        body:JSON.stringify({file_ids:[fid]})
                     });
                 } catch(e) {}
             }
+            document.getElementById('progressFill').style.width = '100%';
+            document.getElementById('progressDetail').textContent = 'Done!';
+            await new Promise(resolve => setTimeout(resolve, 600));
             hideLoading();
             await loadFiles();
         }
