@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.6'
+VERSION = '2.7'
 
 app = Flask(__name__)
 
@@ -180,6 +180,7 @@ TEMPLATE = r"""
         <div class="tabs">
             <div class="tab active" onclick="switchTab('shares')">Shares</div>
             <div class="tab" onclick="switchTab('files')">Open Files</div>
+            <div class="tab" onclick="switchTab('activity')">Activity</div>
         </div>
 
         <div id="tab-shares">
@@ -256,6 +257,40 @@ TEMPLATE = r"""
                 </table>
             </div>
         </div>
+
+        <div id="tab-activity" class="panel" style="display:none;">
+            <div class="panel-header">
+                <span>User Activity (Top 10)</span>
+                <span id="activityCount"></span>
+            </div>
+            <div class="toolbar">
+                <select id="activityTimer" onchange="setActivityTimer()">
+                    <option value="0">Timer: Off</option>
+                    <option value="1">1s</option>
+                    <option value="5">5s</option>
+                    <option value="10" selected>10s</option>
+                    <option value="30">30s</option>
+                    <option value="60">60s</option>
+                    <option value="300">5min</option>
+                    <option value="600">10min</option>
+                </select>
+                <span id="activitySpinner" class="spinner spinner-static"></span>
+                <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
+                    <button class="btn btn-danger btn-sm" id="closeSessionBtn" onclick="closeSession()" disabled>Close Session</button>
+                    <label style="font-size:11px;color:#999;cursor:pointer;">
+                        <input type="checkbox" id="unlockClose" onchange="toggleUnlockClose()" style="accent-color:#ff6c59;"> Unlock
+                    </label>
+                </div>
+            </div>
+            <div class="panel-body">
+                <table>
+                    <thead>
+                        <tr><th>User</th><th>Read</th><th>Write</th><th>Total</th></tr>
+                    </thead>
+                    <tbody id="activityBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
     <div class="modal-overlay" id="loadingModal">
@@ -273,7 +308,10 @@ TEMPLATE = r"""
         let currentTab = 'shares';
         let sharesData = [];
         let filesData = [];
+        let activityData = [];
+        let selectedUser = null;
         let timerInterval = null;
+        let activityTimerInterval = null;
         let viewMode = 'file';
         let sortMode = 'asc'; // none, asc, desc
 
@@ -322,6 +360,8 @@ TEMPLATE = r"""
             event.target.classList.add('active');
             document.getElementById('tab-shares').style.display = tab === 'shares' ? '' : 'none';
             document.getElementById('tab-files').style.display = tab === 'files' ? '' : 'none';
+            document.getElementById('tab-activity').style.display = tab === 'activity' ? '' : 'none';
+            if (tab === 'activity') loadActivity();
         }
 
         async function refresh() {
@@ -547,6 +587,68 @@ TEMPLATE = r"""
             await loadFiles();
         }
 
+        async function loadActivity() {
+            document.getElementById('activitySpinner').classList.remove('spinner-static');
+            try {
+                const r = await fetch('/api/user-activity');
+                activityData = await r.json();
+                renderActivity();
+            } catch(e) {}
+            document.getElementById('activitySpinner').classList.add('spinner-static');
+        }
+
+        function renderActivity() {
+            const tbody = document.getElementById('activityBody');
+            document.getElementById('activityCount').textContent = activityData.length + ' users';
+            selectedUser = null;
+            document.getElementById('closeSessionBtn').disabled = true;
+            if (!activityData.length) {
+                tbody.innerHTML = '<tr><td colspan="4" class="empty">No activity</td></tr>';
+                return;
+            }
+            let html = '';
+            activityData.forEach(a => {
+                html += '<tr style="cursor:pointer;" onclick="selectUser(this, \'' + (a.User||'').replace(/'/g, "\\'") + '\')"><td>' + (a.User||'') + '</td><td>' + (a.Read||0) + '</td><td>' + (a.Write||0) + '</td><td>' + (a.Total||0) + '</td></tr>';
+            });
+            tbody.innerHTML = html;
+        }
+
+        function selectUser(row, user) {
+            document.querySelectorAll('#activityBody tr').forEach(r => r.style.background = '');
+            row.style.background = '#2d2d2d';
+            selectedUser = user;
+        }
+
+        function toggleUnlockClose() {
+            const unlocked = document.getElementById('unlockClose').checked;
+            document.getElementById('closeSessionBtn').disabled = !unlocked || !selectedUser;
+        }
+
+        function setActivityTimer() {
+            if (activityTimerInterval) clearInterval(activityTimerInterval);
+            const sec = parseInt(document.getElementById('activityTimer').value);
+            if (sec > 0) {
+                activityTimerInterval = setInterval(() => {
+                    if (currentTab === 'activity') loadActivity();
+                }, sec * 1000);
+            }
+        }
+
+        async function closeSession() {
+            if (!selectedUser) return;
+            if (!confirm('Close all sessions for user: ' + selectedUser + '?')) return;
+            showLoading('Closing session for ' + selectedUser + '...');
+            try {
+                await fetch('/api/close-session', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({user: selectedUser})
+                });
+            } catch(e) {}
+            hideLoading();
+            await loadActivity();
+        }
+
         loadShares();
     </script>
 </body>
@@ -608,6 +710,35 @@ def api_close_files():
         out = run_ps(ps)
         results.append({'file_id': fid, 'status': 'closed'})
     return jsonify({'results': results})
+
+
+@app.route('/api/user-activity')
+def api_user_activity():
+    ps = """Get-SmbOpenFile | Group-Object ClientUserName | Sort-Object Count -Descending |
+        Select-Object -First 10 | ForEach-Object {
+        $reads = ($_.Group | Where-Object { ($_.Permissions -band 0x2) -eq 0 }).Count
+        $writes = ($_.Group | Where-Object { ($_.Permissions -band 0x2) -eq 0x2 }).Count
+        [PSCustomObject]@{
+            User = if ($_.Name) { $_.Name } else { 'Unknown' }
+            Total = $_.Count
+            Read = $reads
+            Write = $writes
+        }
+    } | ConvertTo-Json"""
+    data = run_ps(ps)
+    if isinstance(data, dict):
+        data = [data]
+    return jsonify(data)
+
+
+@app.route('/api/close-session', methods=['POST'])
+def api_close_session():
+    user = request.json.get('user', '')
+    if not user:
+        return jsonify({'error': 'No user specified'}), 400
+    ps = f'Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue'
+    run_ps(ps)
+    return jsonify({'status': 'done', 'user': user})
 
 
 def background_refresh():
