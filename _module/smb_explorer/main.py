@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.8'
+VERSION = '2.9'
 
 app = Flask(__name__)
 
@@ -600,15 +600,15 @@ TEMPLATE = r"""
         function renderActivity() {
             const tbody = document.getElementById('activityBody');
             document.getElementById('activityCount').textContent = activityData.length + ' users';
-            selectedUser = null;
-            document.getElementById('closeSessionBtn').disabled = true;
             if (!activityData.length) {
                 tbody.innerHTML = '<tr><td colspan="4" class="empty">No activity</td></tr>';
                 return;
             }
             let html = '';
             activityData.forEach(a => {
-                html += '<tr style="cursor:pointer;" onclick="selectUser(this, \'' + (a.User||'').replace(/'/g, "\\'") + '\')"><td>' + (a.User||'') + '</td><td>' + (a.Read||0) + '</td><td>' + (a.Write||0) + '</td><td>' + (a.Total||0) + '</td></tr>';
+                const isSelected = selectedUser && (a.User||'') === selectedUser;
+                const style = isSelected ? ' style="cursor:pointer; background:#3d2a00;"' : ' style="cursor:pointer;"';
+                html += '<tr' + style + ' onclick="selectUser(this, \'' + (a.User||'').replace(/'/g, "\\'") + '\')"><td>' + (a.User||'') + '</td><td>' + (a.Read||0) + '</td><td>' + (a.Write||0) + '</td><td>' + (a.Total||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
@@ -738,12 +738,12 @@ def api_close_session():
     user = request.json.get('user', '')
     if not user:
         return jsonify({'error': 'No user specified'}), 400
-    ps = f"""
-    Get-SmbOpenFile | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbOpenFile -Force -ErrorAction SilentlyContinue
-    Start-Sleep -Milliseconds 200
-    Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue
-    """
-    run_ps(ps)
+    # Close all open files for this user first
+    run_ps(f'Get-SmbOpenFile | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbOpenFile -Force -ErrorAction SilentlyContinue')
+    # Small delay then close session
+    import time
+    time.sleep(0.3)
+    run_ps(f'Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue')
     return jsonify({'status': 'done', 'user': user})
 
 
