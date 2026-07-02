@@ -617,6 +617,8 @@ TEMPLATE = r"""
             document.querySelectorAll('#activityBody tr').forEach(r => r.style.background = '');
             row.style.background = '#2d2d2d';
             selectedUser = user;
+            const unlocked = document.getElementById('unlockClose').checked;
+            document.getElementById('closeSessionBtn').disabled = !unlocked || !selectedUser;
         }
 
         function toggleUnlockClose() {
@@ -736,7 +738,11 @@ def api_close_session():
     user = request.json.get('user', '')
     if not user:
         return jsonify({'error': 'No user specified'}), 400
-    ps = f'Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue'
+    ps = f"""
+    Get-SmbOpenFile | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbOpenFile -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 200
+    Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue
+    """
     run_ps(ps)
     return jsonify({'status': 'done', 'user': user})
 
