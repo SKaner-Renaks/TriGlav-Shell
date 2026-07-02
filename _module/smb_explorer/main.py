@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.8'
+VERSION = '1.9'
 
 app = Flask(__name__)
 
@@ -62,15 +62,21 @@ def get_shares():
 
 def get_open_files():
     ps = """Get-SmbOpenFile | ForEach-Object {
-        $item = Get-Item -ErrorAction SilentlyContinue -LiteralPath $_.Path
+        $file = $_
+        $access = 'Read'
+        $item = $null
+        try { $item = Get-Item -LiteralPath $file.Path -ErrorAction Stop } catch {}
+        if (-not $item) { $access = 'No Access' }
+        elseif ($file.Locks -gt 0) { $access = 'Write' }
         [PSCustomObject]@{
-            FileId = $_.FileId
-            Path = $_.Path
-            ClientComputerName = $_.ClientComputerName
-            ClientUserName = $_.ClientUserName
-            ShareRelativePath = $_.ShareRelativePath
-            Locks = $_.Locks
+            FileId = $file.FileId
+            Path = $file.Path
+            ClientComputerName = $file.ClientComputerName
+            ClientUserName = $file.ClientUserName
+            ShareRelativePath = $file.ShareRelativePath
+            Locks = $file.Locks
             IsFolder = if ($item) { $item.PSIsContainer } else { $false }
+            Access = $access
         }
     } | ConvertTo-Json"""
     files = run_ps(ps)
@@ -85,7 +91,8 @@ def get_open_files():
             'client_user': f.get('ClientUserName', ''),
             'share_path': f.get('ShareRelativePath', ''),
             'locks': f.get('Locks', 0),
-            'is_folder': f.get('IsFolder', False)
+            'is_folder': f.get('IsFolder', False),
+            'access': f.get('Access', 'Read')
         })
     return result
 
@@ -206,6 +213,12 @@ TEMPLATE = r"""
                     <option value="file">Files</option>
                     <option value="folder">Folders</option>
                 </select>
+                <select id="accessFilter" onchange="filterFiles()">
+                    <option value="">All Access</option>
+                    <option value="Read">Read</option>
+                    <option value="Write">Write</option>
+                    <option value="No Access">No Access</option>
+                </select>
                 <select id="shareFilter" onchange="filterFiles()">
                     <option value="">All Shares</option>
                 </select>
@@ -225,7 +238,7 @@ TEMPLATE = r"""
             <div class="panel-body">
                 <table>
                     <thead>
-                        <tr><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th></tr>
+                        <tr><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th><th>Lock</th></tr>
                     </thead>
                     <tbody id="filesBody"></tbody>
                 </table>
@@ -403,6 +416,7 @@ TEMPLATE = r"""
             const q = document.getElementById('searchInput').value.toLowerCase();
             const share = document.getElementById('shareFilter').value;
             const typeFilter = document.getElementById('typeFilter').value;
+            const accessFilter = document.getElementById('accessFilter').value;
             const terms = q.split(/\s+/).filter(Boolean);
             const filtered = filesData.filter(f => {
                 // Filter by share: match file path against share's local path
@@ -415,6 +429,8 @@ TEMPLATE = r"""
                     if (typeFilter === 'file' && f.is_folder) return false;
                     if (typeFilter === 'folder' && !f.is_folder) return false;
                 }
+                // Filter by access
+                if (accessFilter && (f.access||'') !== accessFilter) return false;
                 // Search: all terms must match (AND)
                 if (!terms.length) return true;
                 return terms.every(t =>
@@ -440,16 +456,15 @@ TEMPLATE = r"""
             const tbody = document.getElementById('filesBody');
             document.getElementById('filesCount').textContent = data.length + ' files';
             if (!data.length) {
-                tbody.innerHTML = '<tr><td colspan="4" class="empty">No open files</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" class="empty">No open files</td></tr>';
                 return;
             }
             let html = '';
             data.forEach(f => {
                 const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
-                const accessTag = f.locks > 0
-                    ? '<span class="tag tag-change">Write</span>'
-                    : '<span class="tag tag-full">Read</span>';
-                html += '<tr><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td>' + accessTag + '</td></tr>';
+                const acc = f.access || 'Read';
+                const accCls = acc === 'Write' ? 'tag-change' : acc === 'No Access' ? 'tag-read' : 'tag-full';
+                html += '<tr><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
