@@ -4,13 +4,15 @@ import logging
 import argparse
 import subprocess
 import threading
+from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.6'
+VERSION = '1.7'
 
 app = Flask(__name__)
 
-cached_shares = []
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CACHE_PATH = os.path.join(BASE_DIR, 'shares_cache.json')
 
 
 def run_ps(command):
@@ -138,6 +140,7 @@ TEMPLATE = r"""
             <div class="header-info">Просмотр SMB-ресурсов и открытых файлов</div>
         </div>
         <div class="controls">
+            <span id="dataAge" style="font-size:11px;margin-right:12px;"></span>
             <button class="btn btn-primary" onclick="refresh()">Refresh</button>
         </div>
     </div>
@@ -276,25 +279,43 @@ TEMPLATE = r"""
         }
 
         async function loadShares() {
-            showLoading('Scanning SMB shares...');
             try {
                 const r = await fetch('/api/shares');
-                sharesData = await r.json();
+                const data = await r.json();
+                sharesData = data.shares || [];
                 renderShares();
                 updateShareDropdown();
+                showDataAge(data.updated_at);
             } catch(e) {}
-            hideLoading();
         }
 
         async function refreshShares() {
             showLoading('Scanning SMB shares...');
             try {
                 const r = await fetch('/api/shares/refresh', {method:'POST'});
-                sharesData = await r.json();
+                const data = await r.json();
+                sharesData = data.shares || [];
                 renderShares();
                 updateShareDropdown();
+                showDataAge(data.updated_at);
             } catch(e) {}
             hideLoading();
+        }
+
+        function showDataAge(updatedAt) {
+            const el = document.getElementById('dataAge');
+            if (!updatedAt) { el.textContent = 'No data'; el.style.color = '#666'; return; }
+            const d = new Date(updatedAt.replace(' ', 'T'));
+            const now = new Date();
+            const diffMs = now - d;
+            const diffMin = Math.floor(diffMs / 60000);
+            let age = '';
+            let color = '#21bf4b';
+            if (diffMin < 1) age = 'just now';
+            else if (diffMin < 60) { age = diffMin + ' min ago'; color = diffMin > 10 ? '#ffcc00' : '#21bf4b'; }
+            else { const h = Math.floor(diffMin / 60); age = h + 'h ' + (diffMin % 60) + 'm ago'; color = h > 1 ? '#ff6c59' : '#ffcc00'; }
+            el.textContent = 'Data: ' + updatedAt + ' (' + age + ')';
+            el.style.color = color;
         }
 
         function updateShareDropdown() {
@@ -445,16 +466,38 @@ def index():
     return render_template_string(TEMPLATE, version=VERSION)
 
 
+def get_shares_cached():
+    if os.path.exists(CACHE_PATH):
+        try:
+            with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            return data.get('shares', []), data.get('updated_at', '')
+        except Exception:
+            pass
+    return [], ''
+
+
+def save_shares_cache(shares):
+    data = {
+        'shares': shares,
+        'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }
+    with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+
 @app.route('/api/shares')
 def api_shares():
-    return jsonify(cached_shares)
+    shares, updated_at = get_shares_cached()
+    return jsonify({'shares': shares, 'updated_at': updated_at})
 
 
 @app.route('/api/shares/refresh', methods=['POST'])
 def api_shares_refresh():
-    global cached_shares
-    cached_shares = get_shares()
-    return jsonify(cached_shares)
+    shares = get_shares()
+    save_shares_cache(shares)
+    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return jsonify({'shares': shares, 'updated_at': updated_at})
 
 
 @app.route('/api/open-files')
@@ -462,9 +505,9 @@ def api_open_files():
     return jsonify(get_open_files())
 
 
-def load_shares_background():
-    global cached_shares
-    cached_shares = get_shares()
+def background_refresh():
+    shares = get_shares()
+    save_shares_cache(shares)
 
 
 if __name__ == '__main__':
@@ -480,7 +523,7 @@ if __name__ == '__main__':
                             format='%(asctime)s [%(levelname)s] %(message)s')
         logging.info('SMB Explorer %s started', VERSION)
 
-    threading.Thread(target=load_shares_background, daemon=True).start()
+    threading.Thread(target=background_refresh, daemon=True).start()
 
     print(f"SMB Explorer {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)

@@ -1,7 +1,7 @@
 {
   "name": "smb_explorer",
   "title": "SMB Explorer",
-  "version": "1.6",
+  "version": "1.7",
   "description": "Просмотр SMB-ресурсов и открытых файлов",
   "type": "usual",
   "requires_admin": true,
