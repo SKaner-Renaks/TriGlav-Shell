@@ -615,7 +615,7 @@ TEMPLATE = r"""
 
         function selectUser(row, user) {
             document.querySelectorAll('#activityBody tr').forEach(r => r.style.background = '');
-            row.style.background = '#2d2d2d';
+            row.style.background = '#3d2a00';
             selectedUser = user;
             const unlocked = document.getElementById('unlockClose').checked;
             document.getElementById('closeSessionBtn').disabled = !unlocked || !selectedUser;
