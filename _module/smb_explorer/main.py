@@ -5,7 +5,7 @@ import argparse
 import subprocess
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.2'
+VERSION = '1.3'
 
 app = Flask(__name__)
 
@@ -56,7 +56,7 @@ def get_shares():
 
 
 def get_open_files():
-    files = run_ps('Get-SmbOpenFile | Select-Object FileId,Path,ClientComputerName,ClientUserName,ShareRelativePath | ConvertTo-Json')
+    files = run_ps('Get-SmbOpenFile | Select-Object FileId,Path,ClientComputerName,ClientUserName,ShareRelativePath,Locks | ConvertTo-Json')
     if isinstance(files, dict):
         files = [files]
     result = []
@@ -66,7 +66,8 @@ def get_open_files():
             'path': f.get('Path', ''),
             'client_computer': f.get('ClientComputerName', ''),
             'client_user': f.get('ClientUserName', ''),
-            'share_path': f.get('ShareRelativePath', '')
+            'share_path': f.get('ShareRelativePath', ''),
+            'locks': f.get('Locks', 0)
         })
     return result
 
@@ -119,6 +120,10 @@ TEMPLATE = r"""
         .spinner-lg { display:inline-block; width:40px; height:40px; border:3px solid #404040; border-top-color:#47a8ff; border-radius:50%; animation:spin 0.7s linear infinite; margin-bottom:12px; }
         .modal-text { color:#999; font-size:13px; margin-top:8px; }
         .section-header { padding:8px 12px; background:#1f1f1f; color:#47a8ff; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #333; }
+        .toggle-group { display:inline-flex; border:1px solid #404040; border-radius:3px; overflow:hidden; }
+        .toggle-btn { padding:4px 10px; background:#333; border:none; color:#999; font-size:11px; cursor:pointer; font-family:inherit; }
+        .toggle-btn + .toggle-btn { border-left:1px solid #404040; }
+        .toggle-btn.active { background:#0057b3; color:#fff; }
     </style>
 </head>
 <body>
@@ -170,10 +175,15 @@ TEMPLATE = r"""
                 <span id="filesCount"></span>
             </div>
             <div class="toolbar">
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="viewFile" onclick="setViewMode('file')">File</button>
+                    <button class="toggle-btn" id="viewShare" onclick="setViewMode('share')">Share</button>
+                </div>
                 <select id="shareFilter" onchange="filterFiles()">
                     <option value="">All Shares</option>
                 </select>
                 <input type="text" class="search" id="searchInput" placeholder="Search by user, path or computer..." oninput="filterFiles()">
+                <span id="timerSpinner" class="spinner" style="display:none;"></span>
                 <select id="timerSelect" onchange="setTimer()">
                     <option value="0">Timer: Off</option>
                     <option value="1">1s</option>
@@ -188,7 +198,7 @@ TEMPLATE = r"""
             <div class="panel-body">
                 <table>
                     <thead>
-                        <tr><th>File</th><th>Client</th><th>User</th><th>Share</th></tr>
+                        <tr><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th></tr>
                     </thead>
                     <tbody id="filesBody"></tbody>
                 </table>
@@ -208,6 +218,15 @@ TEMPLATE = r"""
         let sharesData = [];
         let filesData = [];
         let timerInterval = null;
+        let viewMode = 'file';
+
+        function setViewMode(mode) {
+            viewMode = mode;
+            document.getElementById('viewFile').className = mode === 'file' ? 'toggle-btn active' : 'toggle-btn';
+            document.getElementById('viewShare').className = mode === 'share' ? 'toggle-btn active' : 'toggle-btn';
+            document.getElementById('pathHeader').textContent = mode === 'file' ? 'File' : 'Share Path';
+            filterFiles();
+        }
 
         function showLoading(text) {
             document.getElementById('loadingText').textContent = text || 'Scanning...';
@@ -229,7 +248,9 @@ TEMPLATE = r"""
             if (currentTab === 'shares') {
                 await loadShares();
             } else {
+                showLoading('Loading open files...');
                 await loadFiles();
+                hideLoading();
             }
         }
 
@@ -275,13 +296,15 @@ TEMPLATE = r"""
             sel.value = current;
         }
 
-        async function loadFiles() {
+        async function loadFiles(fromTimer) {
+            if (fromTimer) document.getElementById('timerSpinner').style.display = '';
             try {
                 const r = await fetch('/api/open-files');
                 filesData = await r.json();
                 updateShareDropdown();
                 filterFiles();
             } catch(e) {}
+            document.getElementById('timerSpinner').style.display = 'none';
         }
 
         function renderShares() {
@@ -333,7 +356,11 @@ TEMPLATE = r"""
             }
             let html = '';
             data.forEach(f => {
-                html += '<tr><td>' + f.path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td>' + f.share_path + '</td></tr>';
+                const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
+                const accessTag = f.locks > 0
+                    ? '<span class="tag tag-change">Write</span>'
+                    : '<span class="tag tag-full">Read</span>';
+                html += '<tr><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td>' + accessTag + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
@@ -343,7 +370,7 @@ TEMPLATE = r"""
             const sec = parseInt(document.getElementById('timerSelect').value);
             if (sec > 0) {
                 timerInterval = setInterval(() => {
-                    if (currentTab === 'files') loadFiles();
+                    if (currentTab === 'files') loadFiles(true);
                 }, sec * 1000);
             }
         }
