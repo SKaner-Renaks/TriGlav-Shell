@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.7'
+VERSION = '2.8'
 
 app = Flask(__name__)
 
