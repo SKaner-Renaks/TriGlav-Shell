@@ -5,7 +5,7 @@ import argparse
 import subprocess
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.4'
+VERSION = '1.5'
 
 app = Flask(__name__)
 
@@ -181,6 +181,12 @@ TEMPLATE = r"""
                     <button class="toggle-btn active" id="viewFile" onclick="setViewMode('file')">File</button>
                     <button class="toggle-btn" id="viewShare" onclick="setViewMode('share')">Share</button>
                 </div>
+                <button class="btn btn-default btn-sm" id="sortBtn" onclick="toggleSort()" title="Sort">↕ None</button>
+                <select id="typeFilter" onchange="filterFiles()">
+                    <option value="">All</option>
+                    <option value="file">Files</option>
+                    <option value="folder">Folders</option>
+                </select>
                 <select id="shareFilter" onchange="filterFiles()">
                     <option value="">All Shares</option>
                 </select>
@@ -221,12 +227,22 @@ TEMPLATE = r"""
         let filesData = [];
         let timerInterval = null;
         let viewMode = 'file';
+        let sortMode = 'none'; // none, asc, desc
 
         function setViewMode(mode) {
             viewMode = mode;
             document.getElementById('viewFile').className = mode === 'file' ? 'toggle-btn active' : 'toggle-btn';
             document.getElementById('viewShare').className = mode === 'share' ? 'toggle-btn active' : 'toggle-btn';
             document.getElementById('pathHeader').textContent = mode === 'file' ? 'File' : 'Share Path';
+            filterFiles();
+        }
+
+        function toggleSort() {
+            const modes = ['none', 'asc', 'desc'];
+            const labels = {none:'↕ None', asc:'↑ A→Z', desc:'↓ Z→A'};
+            const idx = modes.indexOf(sortMode);
+            sortMode = modes[(idx + 1) % 3];
+            document.getElementById('sortBtn').textContent = labels[sortMode];
             filterFiles();
         }
 
@@ -338,13 +354,19 @@ TEMPLATE = r"""
         function filterFiles() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const share = document.getElementById('shareFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
             const terms = q.split(/\s+/).filter(Boolean);
             const filtered = filesData.filter(f => {
-                // Filter by share: extract share name from UNC path \\server\share\...
+                // Filter by share: match file path against share's local path
                 if (share) {
-                    const m = (f.path||'').match(/\\\\[^\\]+\\([^\\]+)/i);
-                    const sn = m ? m[1] : '';
-                    if (sn.toLowerCase() !== share.toLowerCase()) return false;
+                    const shareObj = sharesData.find(s => s.name === share);
+                    if (shareObj && !(f.path||'').toLowerCase().startsWith(shareObj.path.toLowerCase())) return false;
+                }
+                // Filter by type: folder ends with \
+                if (typeFilter) {
+                    const isFolder = (f.share_path||'').endsWith('\\') || (f.share_path||'').endsWith('/');
+                    if (typeFilter === 'file' && isFolder) return false;
+                    if (typeFilter === 'folder' && !isFolder) return false;
                 }
                 // Search: all terms must match (AND)
                 if (!terms.length) return true;
@@ -355,6 +377,15 @@ TEMPLATE = r"""
                     (f.share_path||'').toLowerCase().includes(t)
                 );
             });
+            // Sort
+            if (sortMode !== 'none') {
+                const key = viewMode === 'share' ? 'share_path' : 'path';
+                filtered.sort((a, b) => {
+                    const va = (a[key]||'').toLowerCase();
+                    const vb = (b[key]||'').toLowerCase();
+                    return sortMode === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+                });
+            }
             renderFiles(filtered);
         }
 
@@ -386,7 +417,6 @@ TEMPLATE = r"""
             }
         }
 
-        loadShares();
     </script>
 </body>
 </html>
