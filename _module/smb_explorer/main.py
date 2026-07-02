@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.9'
+VERSION = '2.0'
 
 app = Flask(__name__)
 
@@ -66,8 +66,15 @@ def get_open_files():
         $access = 'Read'
         $item = $null
         try { $item = Get-Item -LiteralPath $file.Path -ErrorAction Stop } catch {}
-        if (-not $item) { $access = 'No Access' }
-        elseif ($file.Locks -gt 0) { $access = 'Write' }
+        if ($item) {
+            try {
+                $fs = [System.IO.File]::Open($file.Path, 'Open', 'ReadWrite', 'None')
+                $fs.Close()
+                $access = 'Write'
+            } catch {
+                $access = 'Read'
+            }
+        }
         [PSCustomObject]@{
             FileId = $file.FileId
             Path = $file.Path
@@ -217,7 +224,6 @@ TEMPLATE = r"""
                     <option value="">All Access</option>
                     <option value="Read">Read</option>
                     <option value="Write">Write</option>
-                    <option value="No Access">No Access</option>
                 </select>
                 <select id="shareFilter" onchange="filterFiles()">
                     <option value="">All Shares</option>
@@ -463,7 +469,7 @@ TEMPLATE = r"""
             data.forEach(f => {
                 const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
                 const acc = f.access || 'Read';
-                const accCls = acc === 'Write' ? 'tag-change' : acc === 'No Access' ? 'tag-read' : 'tag-full';
+                const accCls = acc === 'Write' ? 'tag-change' : 'tag-full';
                 html += '<tr><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
