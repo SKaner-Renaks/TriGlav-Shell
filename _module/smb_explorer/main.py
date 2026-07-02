@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.7'
+VERSION = '1.8'
 
 app = Flask(__name__)
 
@@ -61,7 +61,19 @@ def get_shares():
 
 
 def get_open_files():
-    files = run_ps('Get-SmbOpenFile | Select-Object FileId,Path,ClientComputerName,ClientUserName,ShareRelativePath,Locks | ConvertTo-Json')
+    ps = """Get-SmbOpenFile | ForEach-Object {
+        $item = Get-Item -ErrorAction SilentlyContinue -LiteralPath $_.Path
+        [PSCustomObject]@{
+            FileId = $_.FileId
+            Path = $_.Path
+            ClientComputerName = $_.ClientComputerName
+            ClientUserName = $_.ClientUserName
+            ShareRelativePath = $_.ShareRelativePath
+            Locks = $_.Locks
+            IsFolder = if ($item) { $item.PSIsContainer } else { $false }
+        }
+    } | ConvertTo-Json"""
+    files = run_ps(ps)
     if isinstance(files, dict):
         files = [files]
     result = []
@@ -72,7 +84,8 @@ def get_open_files():
             'client_computer': f.get('ClientComputerName', ''),
             'client_user': f.get('ClientUserName', ''),
             'share_path': f.get('ShareRelativePath', ''),
-            'locks': f.get('Locks', 0)
+            'locks': f.get('Locks', 0),
+            'is_folder': f.get('IsFolder', False)
         })
     return result
 
@@ -397,13 +410,10 @@ TEMPLATE = r"""
                     const shareObj = sharesData.find(s => s.name === share);
                     if (shareObj && !(f.path||'').toLowerCase().startsWith(shareObj.path.toLowerCase())) return false;
                 }
-                // Filter by type: folder if share_path ends with \ or / or has no extension
+                // Filter by type
                 if (typeFilter) {
-                    const sp = (f.share_path||'').replace(/\\/g, '/');
-                    const lastPart = sp.split('/').filter(Boolean).pop() || '';
-                    const isFolder = sp.endsWith('/') || !lastPart.includes('.');
-                    if (typeFilter === 'file' && isFolder) return false;
-                    if (typeFilter === 'folder' && !isFolder) return false;
+                    if (typeFilter === 'file' && f.is_folder) return false;
+                    if (typeFilter === 'folder' && !f.is_folder) return false;
                 }
                 // Search: all terms must match (AND)
                 if (!terms.length) return true;
