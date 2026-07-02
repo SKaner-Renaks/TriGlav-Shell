@@ -5,7 +5,7 @@ import argparse
 import subprocess
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.3'
+VERSION = '1.4'
 
 app = Flask(__name__)
 
@@ -113,7 +113,9 @@ TEMPLATE = r"""
         .tag-read { background:#1a2a3d; color:#47a8ff; }
         .empty { text-align:center; color:#666; padding:40px; }
         .spinner { display:inline-block; width:20px; height:20px; border:2px solid #404040; border-top-color:#47a8ff; border-radius:50%; animation:spin 0.7s linear infinite; }
+        .spinner-static { animation:none; border-top-color:#404040; }
         @keyframes spin { to { transform:rotate(360deg); } }
+        #tab-files table tr:hover { background:#2d2d2d; }
         .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100; justify-content:center; align-items:center; }
         .modal-overlay.active { display:flex; }
         .modal { background:#262626; border:1px solid #404040; border-radius:4px; padding:30px; text-align:center; }
@@ -183,7 +185,7 @@ TEMPLATE = r"""
                     <option value="">All Shares</option>
                 </select>
                 <input type="text" class="search" id="searchInput" placeholder="Search by user, path or computer..." oninput="filterFiles()">
-                <span id="timerSpinner" class="spinner" style="display:none;"></span>
+                <span id="timerSpinner" class="spinner spinner-static"></span>
                 <select id="timerSelect" onchange="setTimer()">
                     <option value="0">Timer: Off</option>
                     <option value="1">1s</option>
@@ -297,14 +299,14 @@ TEMPLATE = r"""
         }
 
         async function loadFiles(fromTimer) {
-            if (fromTimer) document.getElementById('timerSpinner').style.display = '';
+            if (fromTimer) document.getElementById('timerSpinner').classList.remove('spinner-static');
             try {
                 const r = await fetch('/api/open-files');
                 filesData = await r.json();
                 updateShareDropdown();
                 filterFiles();
             } catch(e) {}
-            document.getElementById('timerSpinner').style.display = 'none';
+            document.getElementById('timerSpinner').classList.add('spinner-static');
         }
 
         function renderShares() {
@@ -336,13 +338,22 @@ TEMPLATE = r"""
         function filterFiles() {
             const q = document.getElementById('searchInput').value.toLowerCase();
             const share = document.getElementById('shareFilter').value;
+            const terms = q.split(/\s+/).filter(Boolean);
             const filtered = filesData.filter(f => {
-                if (share && !(f.share_path||'').toLowerCase().includes(share.toLowerCase())) return false;
-                if (!q) return true;
-                return (f.path||'').toLowerCase().includes(q) ||
-                    (f.client_user||'').toLowerCase().includes(q) ||
-                    (f.client_computer||'').toLowerCase().includes(q) ||
-                    (f.share_path||'').toLowerCase().includes(q);
+                // Filter by share: extract share name from UNC path \\server\share\...
+                if (share) {
+                    const m = (f.path||'').match(/\\\\[^\\]+\\([^\\]+)/i);
+                    const sn = m ? m[1] : '';
+                    if (sn.toLowerCase() !== share.toLowerCase()) return false;
+                }
+                // Search: all terms must match (AND)
+                if (!terms.length) return true;
+                return terms.every(t =>
+                    (f.path||'').toLowerCase().includes(t) ||
+                    (f.client_user||'').toLowerCase().includes(t) ||
+                    (f.client_computer||'').toLowerCase().includes(t) ||
+                    (f.share_path||'').toLowerCase().includes(t)
+                );
             });
             renderFiles(filtered);
         }
