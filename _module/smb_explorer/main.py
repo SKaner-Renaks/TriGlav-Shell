@@ -3,11 +3,14 @@ import json
 import logging
 import argparse
 import subprocess
+import threading
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '1.5'
+VERSION = '1.6'
 
 app = Flask(__name__)
+
+cached_shares = []
 
 
 def run_ps(command):
@@ -181,7 +184,7 @@ TEMPLATE = r"""
                     <button class="toggle-btn active" id="viewFile" onclick="setViewMode('file')">File</button>
                     <button class="toggle-btn" id="viewShare" onclick="setViewMode('share')">Share</button>
                 </div>
-                <button class="btn btn-default btn-sm" id="sortBtn" onclick="toggleSort()" title="Sort">↕ None</button>
+                <button class="btn btn-default btn-sm" id="sortBtn" onclick="toggleSort()" title="Sort">↑ A→Z</button>
                 <select id="typeFilter" onchange="filterFiles()">
                     <option value="">All</option>
                     <option value="file">Files</option>
@@ -227,7 +230,7 @@ TEMPLATE = r"""
         let filesData = [];
         let timerInterval = null;
         let viewMode = 'file';
-        let sortMode = 'none'; // none, asc, desc
+        let sortMode = 'asc'; // none, asc, desc
 
         function setViewMode(mode) {
             viewMode = mode;
@@ -264,7 +267,7 @@ TEMPLATE = r"""
 
         async function refresh() {
             if (currentTab === 'shares') {
-                await loadShares();
+                await refreshShares();
             } else {
                 showLoading('Loading open files...');
                 await loadFiles();
@@ -276,6 +279,17 @@ TEMPLATE = r"""
             showLoading('Scanning SMB shares...');
             try {
                 const r = await fetch('/api/shares');
+                sharesData = await r.json();
+                renderShares();
+                updateShareDropdown();
+            } catch(e) {}
+            hideLoading();
+        }
+
+        async function refreshShares() {
+            showLoading('Scanning SMB shares...');
+            try {
+                const r = await fetch('/api/shares/refresh', {method:'POST'});
                 sharesData = await r.json();
                 renderShares();
                 updateShareDropdown();
@@ -362,9 +376,11 @@ TEMPLATE = r"""
                     const shareObj = sharesData.find(s => s.name === share);
                     if (shareObj && !(f.path||'').toLowerCase().startsWith(shareObj.path.toLowerCase())) return false;
                 }
-                // Filter by type: folder ends with \
+                // Filter by type: folder if share_path ends with \ or / or has no extension
                 if (typeFilter) {
-                    const isFolder = (f.share_path||'').endsWith('\\') || (f.share_path||'').endsWith('/');
+                    const sp = (f.share_path||'').replace(/\\/g, '/');
+                    const lastPart = sp.split('/').filter(Boolean).pop() || '';
+                    const isFolder = sp.endsWith('/') || !lastPart.includes('.');
                     if (typeFilter === 'file' && isFolder) return false;
                     if (typeFilter === 'folder' && !isFolder) return false;
                 }
@@ -417,6 +433,7 @@ TEMPLATE = r"""
             }
         }
 
+        loadShares();
     </script>
 </body>
 </html>
@@ -430,12 +447,24 @@ def index():
 
 @app.route('/api/shares')
 def api_shares():
-    return jsonify(get_shares())
+    return jsonify(cached_shares)
+
+
+@app.route('/api/shares/refresh', methods=['POST'])
+def api_shares_refresh():
+    global cached_shares
+    cached_shares = get_shares()
+    return jsonify(cached_shares)
 
 
 @app.route('/api/open-files')
 def api_open_files():
     return jsonify(get_open_files())
+
+
+def load_shares_background():
+    global cached_shares
+    cached_shares = get_shares()
 
 
 if __name__ == '__main__':
@@ -450,6 +479,8 @@ if __name__ == '__main__':
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s [%(levelname)s] %(message)s')
         logging.info('SMB Explorer %s started', VERSION)
+
+    threading.Thread(target=load_shares_background, daemon=True).start()
 
     print(f"SMB Explorer {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)
