@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '2.2'
+VERSION = '2.3'
 
 app = Flask(__name__)
 
@@ -118,6 +118,8 @@ TEMPLATE = r"""
         .btn-primary:hover { background:#0073d9; }
         .btn-default { background:#404040; color:#f2f2f2; }
         .btn-default:hover { background:#595959; }
+        .btn-danger { background:#4d1a1a; color:#ff6c59; border-color:#ff6c59; }
+        .btn-danger:hover { background:#ff6c59; color:#fff; }
         .content { padding:16px 20px; }
         .tabs { display:flex; gap:0; margin-bottom:16px; }
         .tab { padding:8px 16px; background:#333; border:1px solid #404040; cursor:pointer; font-size:12px; color:#999; }
@@ -236,11 +238,12 @@ TEMPLATE = r"""
                     <option value="300">5min</option>
                     <option value="600">10min</option>
                 </select>
+                <button class="btn btn-danger btn-sm" onclick="closeSelected()">Close</button>
             </div>
             <div class="panel-body">
                 <table>
                     <thead>
-                        <tr><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th><th>Lock</th></tr>
+                        <tr><th><input type="checkbox" id="selectAll" onchange="toggleAll()"></th><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th><th>Lock</th></tr>
                     </thead>
                     <tbody id="filesBody"></tbody>
                 </table>
@@ -466,7 +469,7 @@ TEMPLATE = r"""
                 const path = viewMode === 'share' ? (f.share_path||'') : (f.path||'');
                 const acc = f.access || 'Read';
                 const accCls = acc === 'Write' ? 'tag-change' : 'tag-full';
-                html += '<tr><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
+                html += '<tr><td><input type="checkbox" class="file-cb" data-id="' + f.file_id + '"></td><td>' + path + '</td><td>' + f.client_computer + '</td><td>' + f.client_user + '</td><td><span class="tag ' + accCls + '">' + acc + '</span></td><td>' + (f.locks||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
         }
@@ -479,6 +482,31 @@ TEMPLATE = r"""
                     if (currentTab === 'files') loadFiles(true);
                 }, sec * 1000);
             }
+        }
+
+        function toggleAll() {
+            const checked = document.getElementById('selectAll').checked;
+            document.querySelectorAll('.file-cb').forEach(cb => cb.checked = checked);
+        }
+
+        async function closeSelected() {
+            const ids = [...document.querySelectorAll('.file-cb:checked')].map(cb => cb.dataset.id);
+            if (!ids.length) { alert('Select files to close'); return; }
+            if (!confirm('Close ' + ids.length + ' file(s)?')) return;
+            showProgress('Closing files...');
+            document.getElementById('progressFill').style.width = '0%';
+            for (let i = 0; i < ids.length; i++) {
+                document.getElementById('progressFill').style.width = ((i+1)/ids.length*100) + '%';
+                document.getElementById('progressDetail').textContent = (i+1) + '/' + ids.length;
+                try {
+                    await fetch('/api/close-files', {
+                        method:'POST', headers:{'Content-Type':'application/json'},
+                        body:JSON.stringify({file_ids:[ids[i]]})
+                    });
+                } catch(e) {}
+            }
+            hideProgress();
+            await loadFiles();
         }
 
         loadShares();
@@ -530,6 +558,17 @@ def api_shares_refresh():
 @app.route('/api/open-files')
 def api_open_files():
     return jsonify(get_open_files())
+
+
+@app.route('/api/close-files', methods=['POST'])
+def api_close_files():
+    data = request.get_json()
+    file_ids = data.get('file_ids', [])
+    results = []
+    for fid in file_ids:
+        run_ps(f'Close-SmbOpenFile -FileId {fid} -Force -ErrorAction SilentlyContinue')
+        results.append({'file_id': fid, 'status': 'closed'})
+    return jsonify({'results': results})
 
 
 def background_refresh():
