@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify
 
-VERSION = '2.1'
+VERSION = '2.2'
 
 app = Flask(__name__)
 
@@ -65,6 +65,10 @@ def get_open_files():
         $file = $_
         $item = $null
         try { $item = Get-Item -LiteralPath $file.Path -ErrorAction Stop } catch {}
+        $access = 'Read'
+        if (($file.Permissions -band 0x2) -eq 0x2 -or ($file.Permissions -band 0x40000000) -eq 0x40000000) {
+            $access = 'Write'
+        }
         [PSCustomObject]@{
             FileId = $file.FileId
             Path = $file.Path
@@ -72,7 +76,9 @@ def get_open_files():
             ClientUserName = $file.ClientUserName
             ShareRelativePath = $file.ShareRelativePath
             Locks = $file.Locks
+            Permissions = '0x{0:X}' -f $file.Permissions
             IsFolder = if ($item) { $item.PSIsContainer } else { $false }
+            Access = $access
         }
     } | ConvertTo-Json"""
     files = run_ps(ps)
@@ -80,16 +86,16 @@ def get_open_files():
         files = [files]
     result = []
     for f in files:
-        locks = int(f.get('Locks', 0) or 0)
         result.append({
             'file_id': f.get('FileId', ''),
             'path': f.get('Path', ''),
             'client_computer': f.get('ClientComputerName', ''),
             'client_user': f.get('ClientUserName', ''),
             'share_path': f.get('ShareRelativePath', ''),
-            'locks': locks,
+            'locks': int(f.get('Locks', 0) or 0),
+            'permissions': f.get('Permissions', ''),
             'is_folder': f.get('IsFolder', False),
-            'access': 'Write' if locks > 0 else 'Read'
+            'access': f.get('Access', 'Read')
         })
     return result
 
