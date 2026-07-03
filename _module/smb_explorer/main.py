@@ -612,11 +612,13 @@ TEMPLATE = r"""
             }
             let html = '';
             activityData.forEach(a => {
-                const isSelected = selectedUser && (a.User||'') === selectedUser;
+                const currentUserName = a.User || '';
+                const isSelected = selectedUser && currentUserName === selectedUser;
                 const style = isSelected ? ' style="cursor:pointer; background:#3d2a00;"' : ' style="cursor:pointer;"';
-                html += '<tr' + style + ' onclick="selectUser(this, \'' + (a.User||'').replace(/'/g, "\\'") + '\')"><td>' + (a.User||'') + '</td><td>' + (a.Read||0) + '</td><td>' + (a.Write||0) + '</td><td>' + (a.Total||0) + '</td></tr>';
+                html += '<tr' + style + ' onclick="selectUser(this, \'' + currentUserName.replace(/'/g, "\\'") + '\')"><td>' + currentUserName + '</td><td>' + (a.Read||0) + '</td><td>' + (a.Write||0) + '</td><td>' + (a.Total||0) + '</td></tr>';
             });
             tbody.innerHTML = html;
+            updateActivityButtonsState();
         }
 
         function selectUser(row, user) {
@@ -644,7 +646,7 @@ TEMPLATE = r"""
             const hasUser = !!selectedUser;
             const closeWriteBtn = document.getElementById('closeWriteFilesBtn');
             const kickUserBtn = document.getElementById('kickUserBtn');
-            if (isUnlocked) {
+            if (!isUnlocked) {
                 closeWriteBtn.disabled = true;
                 kickUserBtn.disabled = true;
                 kickUserBtn.style.opacity = '0.4';
@@ -844,21 +846,30 @@ def kick_user_step1():
     user = request.json.get('user', '')
     if not user:
         return jsonify({'error': 'No user specified'}), 400
-    ps_session = f'Get-SmbSession | Where-Object {{ $_.ClientUserName -eq "{user}" }} | Select-Object -Property SessionId | ConvertTo-Json'
+    ps_session = f'Get-SmbSession | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property SessionId, ClientComputerName | ConvertTo-Json'
     sessions = run_ps(ps_session)
     if isinstance(sessions, dict):
         sessions = [sessions]
     session_ids = [s.get('SessionId') for s in sessions if s.get('SessionId')]
     for sid in session_ids:
         run_ps(f'Close-SmbSession -SessionId "{sid}" -Force -ErrorAction SilentlyContinue')
+    if not session_ids:
+        ps_alt = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property ClientComputerName -Unique | ConvertTo-Json'
+        computers = run_ps(ps_alt)
+        if isinstance(computers, dict):
+            computers = [computers]
+        for c in computers:
+            comp_name = c.get('ClientComputerName', '')
+            if comp_name:
+                run_ps(f'Close-SmbSession -ClientComputerName "{comp_name}" -Force -ErrorAction SilentlyContinue')
     import time
-    time.sleep(0.3)
-    ps_files = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -eq "{user}" }} | Select-Object -Property FileId | ConvertTo-Json'
+    time.sleep(0.5)
+    ps_files = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property FileId | ConvertTo-Json'
     files = run_ps(ps_files)
     if isinstance(files, dict):
         files = [files]
     file_ids = [f.get('FileId') for f in files if f.get('FileId')]
-    return jsonify({'session_closed': len(session_ids), 'remaining_files': file_ids})
+    return jsonify({'session_closed': max(len(session_ids), 1), 'remaining_files': file_ids})
 
 
 @app.route('/api/kick-user/step2', methods=['POST'])
