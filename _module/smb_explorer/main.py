@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.9'
+VERSION = '3.0'
 
 app = Flask(__name__)
 
@@ -275,10 +275,16 @@ TEMPLATE = r"""
                     <option value="600">10min</option>
                 </select>
                 <span id="activitySpinner" class="spinner spinner-static"></span>
-                <div style="margin-left:auto; display:flex; gap:8px; align-items:center;">
-                    <button class="btn btn-danger btn-sm" id="closeSessionBtn" onclick="closeSession()" disabled>Close Session</button>
-                    <label style="font-size:11px;color:#999;cursor:pointer;">
-                        <input type="checkbox" id="unlockClose" onchange="toggleUnlockClose()" style="accent-color:#ff6c59;"> Unlock
+                <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+                    <button class="btn btn-default btn-sm" id="closeWriteFilesBtn" onclick="closeAllWriteFiles()" disabled>Close All Write Files</button>
+                    <button class="btn btn-danger btn-sm" id="kickUserBtn" onclick="kickUserWorkflow()" disabled style="opacity: 0.4;">Kick User</button>
+                    <label style="display:inline-flex; align-items:center; gap:6px; font-size:11px; color:#999; cursor:pointer; user-select:none;">
+                        <span>Lock</span>
+                        <div style="position:relative; width:34px; height:18px; background:#404040; border-radius:9px; transition: 0.2s;">
+                            <input type="checkbox" id="unlockToggle" onchange="toggleUnlockActivity()" style="position:absolute; width:100%; height:100%; opacity:0; cursor:pointer; z-index:2;">
+                            <div id="toggleSlider" style="position:absolute; top:2px; left:2px; width:14px; height:14px; background:#888; border-radius:50%; transition:0.2s;"></div>
+                        </div>
+                        <span>Unlock</span>
                     </label>
                 </div>
             </div>
@@ -617,13 +623,36 @@ TEMPLATE = r"""
             document.querySelectorAll('#activityBody tr').forEach(r => r.style.background = '');
             row.style.background = '#3d2a00';
             selectedUser = user;
-            const unlocked = document.getElementById('unlockClose').checked;
-            document.getElementById('closeSessionBtn').disabled = !unlocked || !selectedUser;
+            updateActivityButtonsState();
         }
 
-        function toggleUnlockClose() {
-            const unlocked = document.getElementById('unlockClose').checked;
-            document.getElementById('closeSessionBtn').disabled = !unlocked || !selectedUser;
+        function toggleUnlockActivity() {
+            const isUnlocked = document.getElementById('unlockToggle').checked;
+            const slider = document.getElementById('toggleSlider');
+            if (isUnlocked) {
+                slider.style.left = '18px';
+                slider.style.background = '#ff6c59';
+            } else {
+                slider.style.left = '2px';
+                slider.style.background = '#888';
+            }
+            updateActivityButtonsState();
+        }
+
+        function updateActivityButtonsState() {
+            const isUnlocked = document.getElementById('unlockToggle').checked;
+            const hasUser = !!selectedUser;
+            const closeWriteBtn = document.getElementById('closeWriteFilesBtn');
+            const kickUserBtn = document.getElementById('kickUserBtn');
+            if (isUnlocked) {
+                closeWriteBtn.disabled = true;
+                kickUserBtn.disabled = true;
+                kickUserBtn.style.opacity = '0.4';
+            } else {
+                closeWriteBtn.disabled = !hasUser;
+                kickUserBtn.disabled = !hasUser;
+                kickUserBtn.style.opacity = hasUser ? '1' : '0.4';
+            }
         }
 
         function setActivityTimer() {
@@ -636,19 +665,84 @@ TEMPLATE = r"""
             }
         }
 
-        async function closeSession() {
-            if (!selectedUser) return;
-            if (!confirm('Close all sessions for user: ' + selectedUser + '?')) return;
-            showLoading('Closing session for ' + selectedUser + '...');
+        async function closeAllWriteFiles() {
+            if (!confirm('Close ALL open write files? Read files will not be touched.')) return;
+            showLoading('Getting write files list...', true);
             try {
-                await fetch('/api/close-session', {
+                const res = await fetch('/api/close-write-files', { method: 'POST' });
+                const data = await res.json();
+                const fileIds = data.file_ids || [];
+                if (fileIds.length === 0) {
+                    document.getElementById('progressDetail').textContent = 'No active write files.';
+                    await new Promise(r => setTimeout(r, 1000));
+                    hideLoading();
+                    return;
+                }
+                const total = fileIds.length;
+                for (let i = 0; i < total; i++) {
+                    const percent = Math.round((i / total) * 100);
+                    document.getElementById('progressFill').style.width = percent + '%';
+                    document.getElementById('progressDetail').innerHTML = 'Closing write files: ' + (i+1) + ' of ' + total + ' (' + percent + '%)';
+                    await fetch('/api/close-files', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({file_ids: [fileIds[i]]})
+                    });
+                }
+                document.getElementById('progressFill').style.width = '100%';
+                document.getElementById('progressDetail').textContent = 'Done! All write file streams closed.';
+            } catch(e) {
+                document.getElementById('progressDetail').textContent = 'Error occurred.';
+            }
+            await new Promise(r => setTimeout(r, 1000));
+            hideLoading();
+            if (currentTab === 'activity') loadActivity();
+        }
+
+        async function kickUserWorkflow() {
+            if (!selectedUser) return;
+            if (!confirm('Force kick session for ' + selectedUser + '?')) return;
+            showLoading('Finding sessions for ' + selectedUser + '...', false);
+            try {
+                const response = await fetch('/api/kick-user/step1', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({user: selectedUser})
                 });
-            } catch(e) {}
-            hideLoading();
-            await loadActivity();
+                const result = await response.json();
+                hideLoading();
+                const remainingCount = result.remaining_files ? result.remaining_files.length : 0;
+                if (remainingCount > 0) {
+                    const shouldCloseFiles = confirm('Sessions closed. ' + remainingCount + ' file(s) still open. Close them?');
+                    if (shouldCloseFiles) {
+                        showLoading('Closing remaining files...', true);
+                        const fileIds = result.remaining_files;
+                        const total = fileIds.length;
+                        for (let i = 0; i < total; i++) {
+                            const percent = Math.round((i / total) * 100);
+                            document.getElementById('progressFill').style.width = percent + '%';
+                            document.getElementById('progressDetail').textContent = 'Closing files: ' + (i+1) + ' of ' + total;
+                            await fetch('/api/kick-user/step2', {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({file_ids: [fileIds[i]]})
+                            });
+                        }
+                        document.getElementById('progressFill').style.width = '100%';
+                        document.getElementById('progressDetail').textContent = 'All user files closed!';
+                        await new Promise(r => setTimeout(r, 1000));
+                        hideLoading();
+                    }
+                } else {
+                    alert('Sessions for ' + selectedUser + ' closed. No open files found.');
+                }
+            } catch(e) {
+                hideLoading();
+                alert('Error during Kick User operation.');
+            }
+            selectedUser = null;
+            updateActivityButtonsState();
+            loadActivity();
         }
 
         loadShares();
@@ -733,18 +827,46 @@ def api_user_activity():
     return jsonify(data)
 
 
-@app.route('/api/close-session', methods=['POST'])
-def api_close_session():
+@app.route('/api/close-write-files', methods=['POST'])
+def api_close_write_files():
+    ps = """Get-SmbOpenFile | Where-Object {
+        (($_.Permissions -band 0x2) -eq 0x2) -or (($_.Permissions -band 0x40000000) -eq 0x40000000)
+    } | Select-Object -Property FileId | ConvertTo-Json"""
+    files = run_ps(ps)
+    if isinstance(files, dict):
+        files = [files]
+    file_ids = [f.get('FileId') for f in files if f.get('FileId')]
+    return jsonify({'file_ids': file_ids})
+
+
+@app.route('/api/kick-user/step1', methods=['POST'])
+def kick_user_step1():
     user = request.json.get('user', '')
     if not user:
         return jsonify({'error': 'No user specified'}), 400
-    # Close all open files for this user first
-    run_ps(f'Get-SmbOpenFile | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbOpenFile -Force -ErrorAction SilentlyContinue')
-    # Small delay then close session
+    ps_session = f'Get-SmbSession | Where-Object {{ $_.ClientUserName -eq "{user}" }} | Select-Object -Property SessionId | ConvertTo-Json'
+    sessions = run_ps(ps_session)
+    if isinstance(sessions, dict):
+        sessions = [sessions]
+    session_ids = [s.get('SessionId') for s in sessions if s.get('SessionId')]
+    for sid in session_ids:
+        run_ps(f'Close-SmbSession -SessionId "{sid}" -Force -ErrorAction SilentlyContinue')
     import time
     time.sleep(0.3)
-    run_ps(f'Get-SmbSession | Where-Object {{$_.ClientUserName -eq "{user}"}} | Close-SmbSession -Force -ErrorAction SilentlyContinue')
-    return jsonify({'status': 'done', 'user': user})
+    ps_files = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -eq "{user}" }} | Select-Object -Property FileId | ConvertTo-Json'
+    files = run_ps(ps_files)
+    if isinstance(files, dict):
+        files = [files]
+    file_ids = [f.get('FileId') for f in files if f.get('FileId')]
+    return jsonify({'session_closed': len(session_ids), 'remaining_files': file_ids})
+
+
+@app.route('/api/kick-user/step2', methods=['POST'])
+def kick_user_step2():
+    file_ids = request.json.get('file_ids', [])
+    for fid in file_ids:
+        run_ps(f'Close-SmbOpenFile -FileId "{fid}" -Force -ErrorAction SilentlyContinue')
+    return jsonify({'status': 'done', 'closed_files_count': len(file_ids)})
 
 
 def background_refresh():
