@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '3.1'
+VERSION = '3.2'
 
 app = Flask(__name__)
 
@@ -846,7 +846,9 @@ def kick_user_step1():
     user = request.json.get('user', '')
     if not user:
         return jsonify({'error': 'No user specified'}), 400
-    ps_session = f'Get-SmbSession | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property SessionId, ClientComputerName | ConvertTo-Json'
+    # Escape backslash for PowerShell regex (DOMAIN\User -> DOMAIN\\User)
+    escaped = user.replace('\\', '\\\\')
+    ps_session = f'Get-SmbSession | Where-Object {{ $_.ClientUserName -match "{escaped}" }} | Select-Object -Property SessionId, ClientComputerName | ConvertTo-Json'
     sessions = run_ps(ps_session)
     if isinstance(sessions, dict):
         sessions = [sessions]
@@ -854,7 +856,7 @@ def kick_user_step1():
     for sid in session_ids:
         run_ps(f'Close-SmbSession -SessionId "{sid}" -Force -ErrorAction SilentlyContinue')
     if not session_ids:
-        ps_alt = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property ClientComputerName -Unique | ConvertTo-Json'
+        ps_alt = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -match "{escaped}" }} | Select-Object -Property ClientComputerName -Unique | ConvertTo-Json'
         computers = run_ps(ps_alt)
         if isinstance(computers, dict):
             computers = [computers]
@@ -864,7 +866,7 @@ def kick_user_step1():
                 run_ps(f'Close-SmbSession -ClientComputerName "{comp_name}" -Force -ErrorAction SilentlyContinue')
     import time
     time.sleep(0.5)
-    ps_files = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -like "*{user}" }} | Select-Object -Property FileId | ConvertTo-Json'
+    ps_files = f'Get-SmbOpenFile | Where-Object {{ $_.ClientUserName -match "{escaped}" }} | Select-Object -Property FileId | ConvertTo-Json'
     files = run_ps(ps_files)
     if isinstance(files, dict):
         files = [files]
