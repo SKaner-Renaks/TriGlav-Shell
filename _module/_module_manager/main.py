@@ -141,12 +141,16 @@ MANAGER_TEMPLATE = r"""
         .module-table td { padding:8px 10px; border-bottom:1px solid #333; vertical-align:middle; }
         .module-table tr:hover { background:#2d2d2d; }
         .module-table tr.disabled td { color:#666; }
-        .col-name { width:20%; }
-        .col-desc { width:30%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .col-port { width:10%; text-align:center; }
-        .col-toggle { width:10%; text-align:center; }
-        .col-actions { width:15%; text-align:center; white-space:nowrap; }
-        .col-delete { width:15%; text-align:center; }
+        .col-name { width:180px; }
+        .col-desc { width:auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .col-port { width:70px; text-align:center; }
+        .col-toggle { width:85px; text-align:center; }
+        .col-actions { width:90px; text-align:center; white-space:nowrap; }
+        .col-delete { width:90px; text-align:center; }
+        .module-table th.col-port,
+        .module-table th.col-toggle,
+        .module-table th.col-actions,
+        .module-table th.col-delete { text-align:center; }
 
         .port-running { color:#21bf4b; font-weight:600; }
         .port-stopped { color:#ff6c59; }

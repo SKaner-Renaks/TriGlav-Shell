@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.3.3'
+VERSION = '1.3.4'
 
 app = Flask(__name__)
 
@@ -959,14 +959,14 @@ SHELL_TEMPLATE = r"""
 
             frame.style.display = 'none';
             placeholder.style.display = 'flex';
-            placeholder.innerHTML = '<div style="text-align:center;"><div class="spinner"></div><div style="margin-top:12px;color:#47a8ff;">РџРµСЂРµР·Р°РїСѓСЃРє РјРѕРґСѓР»СЏ...</div></div>';
+            placeholder.innerHTML = '<div style="text-align:center;"><div class="spinner"></div><div style="margin-top:12px;color:#47a8ff;">Перезапуск модуля...</div></div>';
 
             try {
                 await fetch('/api/module/' + currentModule + '/restart', { method: 'POST' });
                 setTimeout(() => selectModule(currentModule), 2000);
                 loadModules();
             } catch(e) {
-                placeholder.innerHTML = '<div style="text-align:center;color:#ff6c59;">РћС€РёР±РєР° РїРµСЂРµР·Р°РїСѓСЃРєР°</div>';
+                placeholder.innerHTML = '<div style="text-align:center;color:#ff6c59;">Ошибка перезапуска</div>';
             }
         }
 
@@ -1191,7 +1191,7 @@ SHELL_TEMPLATE = r"""
             if (data && data.action === 'restart-shell') {
                 try {
                     await fetch('/api/restart', { method: 'POST' });
-                    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">РџРµСЂРµР·Р°РїСѓСЃРє Shell...</div>';
+                    document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Перезапуск Shell...</div>';
                     setTimeout(() => location.reload(), 5000);
                 } catch(e) {}
             } else if (data && data.action === 'restart-elevated' && data.module) {
