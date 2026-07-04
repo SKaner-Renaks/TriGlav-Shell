@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import json
 import shutil
@@ -9,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.0'
+VERSION = '1.3.3'
 
 app = Flask(__name__)
 
@@ -142,6 +142,7 @@ MANAGER_TEMPLATE = r"""
         .module-table tr:hover { background:#2d2d2d; }
         .module-table tr.disabled td { color:#666; }
         .col-name { width:180px; }
+        .col-ver { width:60px; text-align:center; color:#999; font-size:11px; }
         .col-desc { width:auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .col-port { width:70px; text-align:center; }
         .col-toggle { width:85px; text-align:center; }
@@ -214,7 +215,7 @@ MANAGER_TEMPLATE = r"""
                 </div>
                 <table class="module-table">
                     <thead>
-                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="serviceModules"></tbody>
                 </table>
@@ -226,7 +227,7 @@ MANAGER_TEMPLATE = r"""
             <div class="panel-body">
                 <table class="module-table">
                     <thead>
-                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="usualModules"></tbody>
                 </table>
@@ -238,7 +239,7 @@ MANAGER_TEMPLATE = r"""
             <div class="panel-body">
                 <table class="module-table">
                     <thead>
-                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="gameModules"></tbody>
                 </table>
@@ -352,14 +353,15 @@ MANAGER_TEMPLATE = r"""
                 const deleteDisabled = (lockEnabled && isService) ? ' disabled' : '';
 
                 // Кнопки действий
+                const restartDisabled = (lockEnabled && isService) ? ' disabled' : '';
                 let actionsHtml = '';
                 if (running) {
-                    actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')">Restart</button> ';
+                    actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')"' + restartDisabled + '>Перезапустить</button> ';
                 }
-
 
                 const row = '<tr class="' + rowClass + '">'
                     + '<td class="col-name"><strong>' + escHtml(m.title) + '</strong></td>'
+                    + '<td class="col-ver">' + escHtml(m.version || '?') + '</td>'
                     + '<td class="col-desc">' + escHtml(m.description) + '</td>'
                     + '<td class="col-port">' + portHtml + '</td>'
                     + '<td class="col-toggle"><button class="' + btnClass + '" data-name="' + escHtml(m.name) + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
@@ -372,8 +374,8 @@ MANAGER_TEMPLATE = r"""
                 else usualHtml += row;
             });
 
-            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="6" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
-            usualBody.innerHTML = usualHtml || '<tr><td colspan="6" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
+            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="7" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
+            usualBody.innerHTML = usualHtml || '<tr><td colspan="7" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
 
             if (gameHtml) {
                 document.getElementById('gamePanel').style.display = '';
