@@ -9,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.3'
+VERSION = '1.3.4'
 
 app = Flask(__name__)
 
