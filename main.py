@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.2.8'
+VERSION = '1.2.9'
 
 app = Flask(__name__)
 
@@ -584,6 +584,23 @@ def proxy(port, path):
         return jsonify({'error': str(e)}), 502
 
 
+
+@app.route('/api/module/<name>/log-file', methods=['GET'])
+@login_required
+def api_module_log_file(name):
+    if ENVIRONMENT != 'development':
+        return jsonify({'error': 'only in development mode'}), 400
+    mod_path = os.path.join(MODULE_DIR, name)
+    log_path = os.path.join(mod_path, 'module.log')
+    if not os.path.exists(log_path):
+        return jsonify({'error': 'Log file not found', 'path': log_path}), 404
+    try:
+        with open(log_path, 'r', encoding='utf-8', errors='replace') as f:
+            content = f.read()
+        return jsonify({'status': 'ok', 'content': content, 'path': log_path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/_images/<path:filename>')
 def serve_image(filename):
     from flask import send_from_directory
@@ -742,11 +759,14 @@ SHELL_TEMPLATE = r"""
             <div id="content-header" style="display:none;">
                 <span id="module-name"></span>
                 <span class="port" id="module-port"></span>
+                {% if environment == 'development' %}<span id="module-info" style="font-size:13px;color:#999;margin-left:12px;"></span>{% endif %}
                 <button class="btn btn-sm btn-default" onclick="restartModule()">Restart</button>
                 {% if environment == 'development' %}
-                <label style="font-size:11px;color:#999;margin-left:12px;cursor:pointer;">
+                <a id="module-web-link" href="#" target="_blank" class="btn btn-sm btn-default" style="text-decoration:none;display:none;">Web</a>
+                <label style="font-size:11px;color:#999;margin-left:8px;cursor:pointer;">
                     <input type="checkbox" id="logToggle" onchange="toggleLog()" style="accent-color:#0057b3;"> Log
                 </label>
+                <button class="btn btn-sm btn-default" onclick="openLog()">Log File</button>
                 {% endif %}
             </div>
             <iframe id="module-frame" style="display:none;"></iframe>
@@ -780,7 +800,7 @@ SHELL_TEMPLATE = r"""
                 <div class="settings-row">
                     <label>Language</label>
                     <select id="setLanguage">
-                        <option value="ru">Р СѓСЃСЃРєРёР№</option>
+                        <option value="ru">Русский</option>
                         <option value="en">English</option>
                     </select>
                 </div>
@@ -827,6 +847,25 @@ SHELL_TEMPLATE = r"""
             if (!mod) return;
             currentModule = name;
             renderModuleList();
+            
+            // Update module info
+            const infoEl = document.getElementById('module-info');
+            if (infoEl) {
+                const adminTag = mod.requires_admin ? ' | Admin' : '';
+                infoEl.textContent = '[' + mod.type + adminTag + ']';
+            }
+            
+            // Update Web link (development mode only)
+            const webLink = document.getElementById('module-web-link');
+            if (webLink) {
+                if (mod.running && mod.port) {
+                    webLink.href = 'http://127.0.0.1:' + mod.port + '/';
+                    webLink.style.display = 'inline-block';
+                } else {
+                    webLink.style.display = 'none';
+                }
+            }
+            
             if (mod.running && mod.port) {
                 document.getElementById('content-header').style.display = 'flex';
                 document.getElementById('module-name').textContent = mod.title;
@@ -1063,6 +1102,23 @@ SHELL_TEMPLATE = r"""
         updateClock();
         setInterval(updateClock, 60000);
         setInterval(loadModules, 10000);
+
+        async function openLog() {
+            if (!currentModule) return;
+            try {
+                const r = await fetch('/api/module/' + currentModule + '/log-file');
+                const d = await r.json();
+                if (d.status === 'ok') {
+                    const logWindow = window.open('', '_blank', 'width=800,height=600');
+                    logWindow.document.write('<html><head><title>Log: ' + currentModule + '</title><style>body{background:#1a1a1a;color:#f2f2f2;font-family:monospace;font-size:12px;padding:16px;white-space:pre-wrap;word-wrap:break-word;}</style></head><body>' + d.content.replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</body></html>');
+                } else {
+                    alert(d.error || 'Log file not found');
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
 
         window.addEventListener('message', async function(event) {
             const data = event.data;
