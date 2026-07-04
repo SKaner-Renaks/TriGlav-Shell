@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import json
 import shutil
@@ -141,11 +141,11 @@ MANAGER_TEMPLATE = r"""
         .module-table td { padding:8px 10px; border-bottom:1px solid #333; vertical-align:middle; }
         .module-table tr:hover { background:#2d2d2d; }
         .module-table tr.disabled td { color:#666; }
-        .col-name { width:22%; }
-        .col-desc { width:28%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .col-name { width:20%; }
+        .col-desc { width:30%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
         .col-port { width:10%; text-align:center; }
         .col-toggle { width:10%; text-align:center; }
-        .col-actions { width:15%; text-align:center; }
+        .col-actions { width:15%; text-align:center; white-space:nowrap; }
         .col-delete { width:15%; text-align:center; }
 
         .port-running { color:#21bf4b; font-weight:600; }
@@ -192,6 +192,7 @@ MANAGER_TEMPLATE = r"""
         </div>
         <div class="controls">
             <span id="adminStatus" style="font-size:12px;margin-right:10px;"></span>
+            <button id="restartAdminBtn" class="btn btn-sm btn-admin" onclick="restartElevated('module_manager')" style="display:none;">Restart as Admin</button>
             <button class="btn btn-primary" onclick="saveAndRestart()">Применить и перезапустить</button>
         </div>
     </div>
@@ -351,9 +352,7 @@ MANAGER_TEMPLATE = r"""
                 if (running) {
                     actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')">Restart</button> ';
                 }
-                if (needsAdmin && !isAdmin) {
-                    actionsHtml += '<button class="btn btn-sm btn-admin" onclick="restartElevated(\'' + escHtml(m.name) + '\')">Run Admin</button>';
-                }
+
 
                 const row = '<tr class="' + rowClass + '">'
                     + '<td class="col-name"><strong>' + escHtml(m.title) + '</strong></td>'
@@ -501,10 +500,13 @@ MANAGER_TEMPLATE = r"""
                 const d = await r.json();
                 isAdmin = d.is_admin;
                 const statusEl = document.getElementById('adminStatus');
+                const adminBtn = document.getElementById('restartAdminBtn');
                 if (isAdmin) {
                     statusEl.innerHTML = '<span style="color:#21bf4b;">&#10003; Admin</span>';
+                    if (adminBtn) adminBtn.style.display = 'none';
                 } else {
                     statusEl.innerHTML = '<span style="color:#ffcc00;">&#9888; Not Admin</span>';
+                    if (adminBtn) adminBtn.style.display = 'inline-block';
                 }
             } catch(e) {}
         }

@@ -1,15 +1,19 @@
-{
-  "name": "module_manager",
-  "title": "Модули",
-  "version": "1.3.0",
-  "description": "Управление запуском модулей оболочки",
-  "type": "service",
-  "requires_admin": true,
-  "current_port": 5083,
-  "languages": [
-    "ru",
-    "en"
-  ],
-  "current_settings": {},
-  "default_settings": {}
+﻿{
+    "name":  "module_manager",
+    "title":  "РњРѕРґСѓР»Рё",
+    "version":  "1.3.2",
+    "description":  "РЈРїСЂР°РІР»РµРЅРёРµ Р·Р°РїСѓСЃРєРѕРј РјРѕРґСѓР»РµР№ РѕР±РѕР»РѕС‡РєРё",
+    "type":  "service",
+    "requires_admin":  true,
+    "current_port":  5083,
+    "languages":  [
+                      "ru",
+                      "en"
+                  ],
+    "current_settings":  {
+
+                         },
+    "default_settings":  {
+
+                         }
 }
