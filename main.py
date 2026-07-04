@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.3.2'
+VERSION = '1.3.3'
 
 app = Flask(__name__)
 
@@ -513,8 +513,13 @@ def api_settings_reset():
             manifest_path = os.path.join(m['_path'], 'manifest.json')
             if 'default_settings' in m:
                 m['current_settings'] = m['default_settings'].copy()
-                with open(manifest_path, 'w', encoding='utf-8') as f:
-                    json.dump({k: v for k, v in m.items() if k != '_path'}, f, indent=2, ensure_ascii=False)
+            # Reset port to default (5000 range) so next start picks fresh free port
+            if 'default_port' in m:
+                m['current_port'] = m['default_port']
+            else:
+                m['current_port'] = 5000 + hash(m['name']) % 100
+            with open(manifest_path, 'w', encoding='utf-8') as f:
+                json.dump({k: v for k, v in m.items() if k != '_path'}, f, indent=2, ensure_ascii=False)
         return jsonify({'status': 'reset'})
     return jsonify({'error': 'Unknown target'}), 400
 
@@ -598,7 +603,30 @@ def api_module_open_folder(name):
         return jsonify({'error': 'Folder not found'}), 404
     try:
         import ctypes
-        ctypes.windll.shell32.ShellExecuteW(None, 'open', 'explorer.exe', mod_path, None, 1)
+        import time
+        # Get the currently active window (browser)
+        user32 = ctypes.windll.user32
+        hwnd_foreground = user32.GetForegroundWindow()
+        # Open explorer
+        ctypes.windll.shell32.ShellExecuteW(None, 'open', 'explorer.exe', mod_path, None, 5)  # SW_SHOW
+        time.sleep(0.5)
+        # Find the explorer window
+        def enum_windows_callback(hwnd, results):
+            length = user32.GetWindowTextLengthW(hwnd)
+            if length > 0:
+                buff = ctypes.create_unicode_buffer(length + 1)
+                user32.GetWindowTextW(hwnd, buff, length + 1)
+                if mod_path.replace('/', '\\') in buff.value or mod_path.split('\\')[-1].lower() in buff.value.lower():
+                    results.append(hwnd)
+            return True
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        windows = []
+        user32.EnumWindows(WNDENUMPROC(enum_windows_callback), 0)
+        if windows:
+            hwnd = windows[0]
+            user32.ShowWindow(hwnd, 9)  # SW_RESTORE
+            user32.SetForegroundWindow(hwnd)
+            user32.BringWindowToTop(hwnd)
         return jsonify({'status': 'ok', 'path': mod_path})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1209,7 +1237,9 @@ if __name__ == '__main__':
     print("\n  Allocating ports...")
     for m in modules:
         name = m['name']
-        manifest_port = m.get('current_port', 5000)
+        manifest_port = m.get('current_port', 0)
+        if not manifest_port or manifest_port == 0:
+            manifest_port = 5000 + hash(m['name']) % 100
         if ENVIRONMENT == 'production':
             if manifest_port not in allocated_ports and is_port_free(manifest_port):
                 port = manifest_port
