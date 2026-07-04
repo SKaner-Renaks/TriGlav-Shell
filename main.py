@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.3.1'
+VERSION = '1.3.2'
 
 app = Flask(__name__)
 
@@ -871,7 +871,7 @@ SHELL_TEMPLATE = r"""
             const infoEl = document.getElementById('module-info');
             if (infoEl) {
                 const adminTag = mod.requires_admin ? ' | Admin' : '';
-                infoEl.innerHTML = '<span style=''color:#fff;font-weight:600;''>' + mod.name + '</span> [' + mod.type + adminTag + ']';
+                infoEl.innerHTML = "<span style='color:#fff;font-weight:600;'>" + mod.name + "</span> [" + mod.type + adminTag + "]";
             }
             // Show folder button only on localhost
             const folderBtn = document.getElementById('module-folder-btn');
@@ -1128,7 +1128,7 @@ SHELL_TEMPLATE = r"""
         setInterval(updateClock, 60000);
         setInterval(loadModules, 10000);
 
-                async function openFolder() {
+        async function openFolder() {
             if (!currentModule) return;
             try {
                 const r = await fetch('/api/module/' + currentModule + '/open-folder', { method: 'POST' });
