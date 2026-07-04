@@ -921,14 +921,14 @@ SHELL_TEMPLATE = r"""
             
             if (mod.running && mod.port) {
                 document.getElementById('content-header').style.display = 'flex';
-                document.getElementById('module-name').textContent = mod.title;
+                document.getElementById('module-name').textContent = 'Информация';
                 document.getElementById('module-port').textContent = ':' + mod.port;
                 document.getElementById('module-frame').src = '/proxy/' + mod.port + '/';
                 document.getElementById('module-frame').style.display = 'block';
                 document.getElementById('placeholder').style.display = 'none';
             } else {
                 document.getElementById('content-header').style.display = 'flex';
-                document.getElementById('module-name').textContent = mod.title;
+                document.getElementById('module-name').textContent = 'Информация';
                 document.getElementById('module-port').textContent = 'not running';
                 document.getElementById('module-frame').style.display = 'none';
                 document.getElementById('placeholder').style.display = 'flex';
