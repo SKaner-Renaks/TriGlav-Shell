@@ -1,18 +1,21 @@
-{
-  "name": "shell",
-  "title": "TriGlav Shell",
-  "version": "1.2.7",
-  "description": "Управляющая веб-оболочка для модулей автоматизации",
-  "type": "shell",
-  "requires_admin": false,
-  "current_port": 8080,
-  "languages": ["ru", "en"],
-  "current_settings": {
-    "auth_mode": "both",
-    "environment": "production"
-  },
-  "default_settings": {
-    "auth_mode": "both",
-    "environment": "production"
-  }
+﻿{
+    "name":  "shell",
+    "title":  "TriGlav Shell",
+    "version":  "1.2.8",
+    "description":  "РЈРїСЂР°РІР»СЏСЋС‰Р°СЏ РІРµР±-РѕР±РѕР»РѕС‡РєР° РґР»СЏ РјРѕРґСѓР»РµР№ Р°РІС‚РѕРјР°С‚РёР·Р°С†РёРё",
+    "type":  "shell",
+    "requires_admin":  false,
+    "current_port":  8080,
+    "languages":  [
+                      "ru",
+                      "en"
+                  ],
+    "current_settings":  {
+                             "auth_mode":  "both",
+                             "environment":  "production"
+                         },
+    "default_settings":  {
+                             "auth_mode":  "both",
+                             "environment":  "production"
+                         }
 }

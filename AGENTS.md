@@ -1,109 +1,71 @@
 # AGENTS.md — TriGlav Shell
 
-## Language
-Communication language — **Russian**. All comments, docs, UI labels — русский.
+## Язык
 
-## Environment
+Коммуникация — **русский**. Все комментарии, документация, UI-лейблы — на русском.
 
-- **ОС**: Windows 10/11, Windows Server 2016+
-- **Git**: установлен по `C:\Program Files\Git\cmd\git.exe` (v2.54.0)
+## Окружение
+
+- **ОС**: Windows 10/11, Windows Server 2016+ (Linux НЕ поддерживается)
+- **Git**: `C:\Program Files\Git\cmd\git.exe` (v2.54.0)
 - **GitHub**: репозиторий `https://github.com/SKaner-Renaks/TriGlav-Shell`
-- **Зеркало**: папка `C:\ars\mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ars\mimo\Task Server`
-- **Синхронизация**: после изменений копировать файлы проекта в `TriGlav-Shell`, затем `git add . && git commit && git push`
+- **Зеркало**: `C:\ars\mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ars\mimo\Task Server`
+- **Синхронизация**: копировать файлы в зеркало → `git add . && git commit && git push`
 - **Файлы для синхронизации**: `main.py`, `AGENTS.md`, `requirements.txt`, `task.md`, `task_updater.md`, `_data/`, `_module/`
-- **Исключается из синхронизации**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`
+- **Исключается**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`
 
-## Task Requirements
+## Запуск
 
-Полное ТЗ находится в файле `task.md`. Ниже — статус реализации по состоянию на текущую версию.
+```bash
+pip install flask requests psutil ldap3
 
-### Выполнено (~85%)
-- **§1-2**: Цель, стек, Windows-окружение, Proxmox тема
-- **§3**: Единая авторизация в Shell, модули без auth, Production/Development режимы
-- **§4**: Структура каталогов (main.py, config.cfg, encrypt.py, care.env, _lang/, _module/)
-- **§5.1**: config.cfg — port, auth_mode, environment, global_refresh_interval, global_theme, allowed_ips
-- **§5.2**: manifest.json — name, title, version, description, type, requires_admin, current_port, languages, settings
-- **§5.3**: encrypt.py — шифрование care.env, динамические методы, auto-create с дефолтами
-- **§6.1**: Автообнаружение модулей, выделение портов, subprocess.Popen с --host/--port
-- **§6.2**: Авторизация — AD (ldap3) + local, @login_required на маршрутах Shell
-- **§6.3**: Локализация Shell — _lang/ru.json, en.json, fallback ru→en→raw keys
-- **§6.4**: Настройки и сброс — кнопка «Шестерёнка», сброс модуля/консоли
-- **§6.5**: UI — 4 зоны, splitter с drag-to-resize, localStorage для ширины, iframe
-- **§7**: Адаптация control, monitor, task_server как модулей в _module/
-- **§8**: Бекап старых файлов в BackUp/
-- **v1.2**: Reverse proxy для удалённого доступа, проверка firewall, визуализация запуска
-- **v1.2.1**: Версионность, requirements.txt для всех модулей
-- **v1.2.1+**: Модули проверки зависимостей, визуализация перезапуска модулей
-- **v1.2.2**: Типы модулей (shell/usual/service), автозапуск по типу, service-стилизация
-- **v1.2.3**: Оптимизация скорости загрузки модулей, модуль управления модулями
+python main.py                # Shell на :8080 (auth + управление модулями)
+```
 
-### НЕ сделано / требует доработки
+Для включения/отключения задач (Task Scheduler) нужны права администратора:
+```powershell
+Start-Process python -ArgumentList '"main.py"' -Verb RunAs
+```
 
-**§5.3 encrypt.py:**
-- ❌ Нет заглушек для будущих методов шифрования (AES/Fernet) — только XOR+base64
+## Архитектура
 
-**§6.1 Auto-discovery:**
-- ❌ `requires_admin = true` не реализован через `ShellExecuteW` + `runas` (только UI кнопка)
-
-**§6.2 Авторизация:**
-- ❌ Нет ролей/групп AD для управления видимостью модулей
-
-**§6.3 Локализация:**
-- ❌ Модули не имеют自己的 `_lang/` — локализация только в Shell
-
-**§6.5 UI Shell:**
-- ❌ Нет полноценной панели настроек (auth_mode, environment, language, port, theme)
-
-**§6.6 Restart:**
-- ❌ Нет программного перезапуска Shell при изменении настроек
-- ❌ Нет long-polling health-check для автообновления страницы
-
----
-
-## Architecture
-
-Shell-оболочка управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы к модулям через `/proxy/<port>/`.
+Shell (Flask, port 8080) управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell        (port 8080)   VERSION = '1.2.5'
-manifest.json        Манифест Shell
-config.cfg           Глобальные настройки (INI)
-encrypt.py           Шифрование care.env (XOR+base64)
-care.env             Хранилище секретов (auto-created)
-_lang/               Локализация (ru.json, en.json)
-_ps/                 PowerShell скрипты Shell
-  _check_fw.ps1      Проверка файервола
+main.py              Ядро Shell           (port 8080)   VERSION = '1.2.7'
+_data/
+  config.cfg         Глобальные настройки (INI)
+  manifest.json      Манифест Shell
+  encrypt.py         Шифрование care.env (XOR+base64)
+  care.env           Хранилище секретов (auto-created)
+  _lang/             Локализация (ru.json, en.json)
+  _ps/               PowerShell скрипты Shell
+  _images/           SVG-иконки
 _module/             Автообнаружение модулей
-  task_scheduler/    Планировщик задач   (port 5002)   v2.4.5  type=usual
-  monitor/           Мониторинг сервера  (port 5001)   v1.5    type=usual
-  control/           Панель управления   (port 5004)   v1.4    type=usual
-  snake/             Змейка              (port 5006)   v1.2    type=game
+  monitor/           Мониторинг сервера  (port 5001)   v1.5     type=usual
+  task_scheduler/    Планировщик задач   (port 5002)   v2.4.5   type=usual
+  control/           Панель управления   (port 5004)   v1.4     type=usual
   invaders/          Космические захватчики (port 5005) v1.2    type=game
+  snake/             Змейка              (port 5006)   v1.2     type=game
   _deps_checker/     Проверка зависимостей (port 5007) v1.2.2  type=service
   _module_manager/   Управление модулями (port 5008)   v1.2.1  type=service
-  _updater/          Обновления из GitHub (port 5009)  v1.3.1  type=service
-_Download/           Скачанные архивы (auto-created, не синхронизируется)
+  _updater/          Обновления из GitHub (port 5009)  v1.4.1  type=service
 ```
 
----
-
-## Создание модулей
-
-### Типы модулей
+## Типы модулей
 
 | Тип | Описание | Папка | Цвет в sidebar | Автозапуск |
 |-----|----------|-------|----------------|------------|
 | `shell` | Ядро оболочки | корень | — | — |
 | `usual` | Обычный модуль | `_module/name/` | стандартный | через config |
-| `service` | Сервисный модуль | `_module/_name/` | оранжевый (hover) | через config |
+| `service` | Сервисный модуль | `_module/_name/` | оранжевый | через config |
+| `game` | Игровой модуль | `_module/name/` | зелёный | через config |
 
-### Именование папок
+Префикс `_` в имени папки = сервисный модуль.
 
-- **Обычные модули**: `_module/task_scheduler/`, `_module/monitor/`
-- **Сервисные модули**: `_module/_deps_checker/`, `_module/_module_manager/`
-- Префикс `_` = сервисный модуль
+## Создание модуля
 
-### Структура модуля
+### Структура
 
 ```
 _module/[name]/
@@ -119,7 +81,7 @@ _module/[name]/
   "name": "my_module",
   "title": "Название модуля",
   "version": "1.0",
-  "description": "Описание модуля",
+  "description": "Описание",
   "type": "usual",
   "requires_admin": false,
   "current_port": 5009,
@@ -131,97 +93,59 @@ _module/[name]/
 
 ### Требования к модулю
 
-1. **Flask-приложение**: принимает `--host` и `--port` через argparse
-2. **Без auth**: авторизацию обеспечивает Shell
-3. **Тема**: Proxmox-style dark theme (#1a1a1a, #262626, #47a8ff)
-4. **requirements.txt**: указать зависимости (обычно `flask>=3.0`)
-5. **PS1-скрипты**: если нужны — в папке модуля (не в корне)
+1. Flask-приложение с `argparse`: принимает `--host`, `--port`, опционально `--log`
+2. **Без auth** — авторизацию обеспечивает Shell
+3. Тема: Proxmox-style dark (#1a1a1a, #262626, #47a8ff)
+4. `requirements.txt` с зависимостиями (обычно `flask>=3.0`)
+5. Версия в заголовке скрипта: `VERSION = 'x.y.z'`
 
-### Требования к отображению в Shell
+## Ключевые особенности
 
-- Обычные модули: стандартный фон в sidebar
-- Сервисные модули: оранжевый фон при наведении и выборе
-- Отключённые модули: НЕ отображаются в sidebar Shell
-- Модуль Manager (`_module_manager`): отображает ВСЕ модули (включая отключённые)
+### Production vs Development
 
-### Конфиг автозапуска (config.cfg)
+- **Production**: модули на `127.0.0.1`, доступ только через Shell proxy
+- **Development**: модули на `0.0.0.0`, доступны напрямую + логирование
+
+### Reverse Proxy
+
+Shell проксирует HTML-ответы модулей, перезаписывая относительные URL для маршрутизации через `/proxy/<port>/`. Модули не должны использовать绝对ные пути в `fetch()`, `src=`, `href=`.
+
+### Автозапуск (config.cfg)
 
 ```ini
 [modules_auto_start]
 usual = all                    # или: monitor,control,task_scheduler
 service = all                  # или: deps_checker
+game = all                     # или: snake,invaders
 ```
 
----
+### Порты
 
-## Логирование
+- Production: Shell сканирует свободные порты, начиная с 5000. `current_port` в manifest.json перезаписывается.
+- Development: порты из manifest.json используются как есть.
 
-Логирование работает **только в Development mode**.
+### Логирование
 
-### Включение
-В Development mode при выборе модуля в content header отображается чекбокс **Log**. При включении модуль перезапускается с флагом `--log`.
+Только в Development mode. Включается чекбоксом Log в content header. Модуль перезапускается с флагом `--log`, пишет в `module.log` в своей папке.
 
-### Как работает
-- Каждый модуль принимает `--log` через argparse
-- При `--log` модуль пишет лог в `module.log` в своей папке
-- Лог-формат: `2026-07-01 12:00:00 [INFO] Module started`
-- Уровень: DEBUG
+## Gotchas
 
-### Файлы логов
-```
-_module/monitor/module.log
-_module/control/module.log
-_module/task_scheduler/module.log
-_module/_module_manager/module.log
-_module/_updater/updater.log
-_module/_deps_checker/module.log
-_module/snake/module.log
-_module/invaders/module.log
-```
-
-### Production mode
-Логирование отключено. Флаг `--log` не передаётся. Лог-файлы не создаются.
-
----
-
-## Running
-
-```bash
-python -m pip install flask requests psutil ldap3
-
-python main.py                # Shell on :8080 (auth + module management)
-```
-
-Модули запускаются Shell автоматически при выборе в UI.
-
-Admin rights needed for task enable/disable:
-```powershell
-Start-Process python -ArgumentList '"main.py"' -Verb RunAs
-```
-
-## Key Gotchas
-
-- **PowerShell encoding**: Russian Windows uses cp866. Decode with `.decode('cp866', errors='replace')`.
-- **Task enable/disable**: `schtasks /Change` fails for RunLevel=Highest tasks. Use `Enable-ScheduledTask`/`Disable-ScheduledTask` PowerShell cmdlets.
-- **SSD detection**: `Win32_DiskDrive.MediaType` can't distinguish SSD from HDD. Use `Get-PhysicalDisk.MediaType` instead.
-- **GPU metrics**: WMI `Win32_VideoController.Utilization` returns null. Use `nvidia-smi` CLI.
-- **Production mode**: All modules bind to `127.0.0.1`. External access only through Shell proxy.
-- **Development mode**: Modules bind to `0.0.0.0`. Accessible directly.
-- **Firewall**: Shell checks if port is open on startup and warns if not.
-- **Proxy**: Shell rewrites relative URLs in module HTML to route through `/proxy/<port>/`.
-- **requires_admin**: UI shows admin status, "Restart as Admin" button uses ShellExecuteW + runas.
-- **PS1 files**: `_check_fw.ps1` в `_ps/`, модульные PS1 в папках модулей.
+- **PowerShell encoding**: русская Windows использует cp866. Декодировать через `.decode('cp866', errors='replace')`.
+- **Task enable/disable**: `schtasks /Change` не работает для задач с RunLevel=Highest. Использовать `Enable-ScheduledTask`/`Disable-ScheduledTask` (PowerShell cmdlets).
+- **SSD detection**: `Win32_DiskDrive.MediaType` не различает SSD/HDD. Использовать `Get-PhysicalDisk.MediaType`.
+- **GPU metrics**: WMI `Win32_VideoController.Utilization` возвращает null. Использовать `nvidia-smi`.
+- **Firewall**: Shell проверяет порт при старте и предупреждает, если не открыт.
+- **requires_admin**: UI показывает статус админа, кнопка «Restart as Admin» использует `ShellExecuteW` + `runas`.
+- **PS1-скрипты**: Shell-скрипты в `_data/_ps/`, модульные — в папках модулей.
+- **config.cfg**: хранится в `_data/config.cfg`. Модули **не** импортируют общий конфиг.
+- **encrypt.py**: только XOR+base64. care.env auto-created с дефолтами admin/admin.
 
 ## Code Conventions
 
-- Shell config in `config.cfg` only — modules don't import shared config
-- Module metadata in `manifest.json` (name, title, version, description, type, port, settings)
-- Modules accept `--host` and `--port` via argparse
-- Modules have NO auth — Shell handles authentication
-- Version string in script header: `VERSION = 'x.y.z'`
-- All Shell API routes use `@login_required` decorator
-- Backup files: `BackUp/YYYYMMDD-N/` directory
-- Each module and shell has its own `requirements.txt`
-- При перезапуске модуля через Shell показывается спиннер с текстом «Перезапуск модуля...»
-- Сервисные модули: папка с префиксом `_`, оранжевый цвет в sidebar
-- Обычные модули: папка без префикса, стандартный цвет в sidebar
+- Метаданные модуля в `manifest.json`, конфиг Shell — в `config.cfg`
+- Shell-маршруты используют `@login_required`
+- Сервисные модули: папка с `_`, оранжевый цвет в sidebar
+- Обычные модули: папка без префикса, стандартный цвет
+- Бекапы: `BackUp/YYYYMMDD-N/`
+- Локализация: fallback ru → en → raw keys
+- Каждый модуль и Shell имеют свой `requirements.txt`
