@@ -169,6 +169,7 @@ MANAGER_TEMPLATE = r"""
         .btn-delete:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
         .btn-restart { background:none; border:1px solid #47a8ff; color:#47a8ff; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
         .btn-restart:hover { background:#47a8ff; color:#fff; }
+        .btn-restart:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
         .btn-admin { background:none; border:1px solid #ff9800; color:#ff9800; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
         .btn-admin:hover { background:#ff9800; color:#fff; }
 
@@ -261,7 +262,7 @@ MANAGER_TEMPLATE = r"""
             </div>
             <div class="modal-footer">
                 <button class="btn btn-default" onclick="closeDeleteModal()">Отмена</button>
-                <button class="btn btn-danger" id="deleteConfirmBtn">Удалить</button>
+                <button class="btn btn-danger" id="deleteConfirmBtn">Remove</button>
             </div>
         </div>
     </div>
@@ -356,7 +357,7 @@ MANAGER_TEMPLATE = r"""
                 const restartDisabled = (lockEnabled && isService) ? ' disabled' : '';
                 let actionsHtml = '';
                 if (running) {
-                    actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')"' + restartDisabled + '>Перезапустить</button> ';
+                    actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')"' + restartDisabled + '>Restart</button> ';
                 }
 
                 const row = '<tr class="' + rowClass + '">'
@@ -366,7 +367,7 @@ MANAGER_TEMPLATE = r"""
                     + '<td class="col-port">' + portHtml + '</td>'
                     + '<td class="col-toggle"><button class="' + btnClass + '" data-name="' + escHtml(m.name) + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
                     + '<td class="col-actions">' + actionsHtml + '</td>'
-                    + '<td class="col-delete"><button class="btn-delete" data-name="' + escHtml(m.name) + '" data-type="' + escHtml(type) + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
+                    + '<td class="col-delete"><button class="btn-delete" data-name="' + escHtml(m.name) + '" data-type="' + escHtml(type) + '" onclick="deleteModule(this)"' + deleteDisabled + '>Remove</button></td>'
                     + '</tr>';
 
                 if (type === 'service') serviceHtml += row;
