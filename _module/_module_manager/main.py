@@ -9,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.2.2'
+VERSION = '1.3.0'
 
 app = Flask(__name__)
 
@@ -48,24 +48,11 @@ def save_autostart_config(usual, service, game='all'):
 
 
 def sanitize_name(name):
-    """Проверка имени модуля на безопасность — только буквы, цифры, подчёркивание."""
     if not name or not re.match(r'^[a-zA-Z0-9_]+$', name):
         return False
     if '..' in name or '/' in name or '\\' in name:
         return False
     return True
-
-
-def escape_html(text):
-    """Экранирование HTML-символов для предотвращения XSS."""
-    if not text:
-        return ''
-    return (str(text)
-            .replace('&', '&amp;')
-            .replace('<', '&lt;')
-            .replace('>', '&gt;')
-            .replace('"', '&quot;')
-            .replace("'", '&#39;'))
 
 
 def get_all_modules():
@@ -84,6 +71,34 @@ def get_all_modules():
             except Exception:
                 pass
     return modules
+
+
+def shell_api_get(endpoint):
+    """GET-запрос к Shell API с обходом прокси."""
+    shell_port = get_shell_port()
+    try:
+        resp = requests.get(
+            f'http://127.0.0.1:{shell_port}{endpoint}',
+            timeout=5,
+            proxies={'http': None, 'https': None}
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception:
+        return None
+
+
+def shell_api_post(endpoint):
+    """POST-запрос к Shell API с обходом прокси."""
+    shell_port = get_shell_port()
+    try:
+        resp = requests.post(
+            f'http://127.0.0.1:{shell_port}{endpoint}',
+            timeout=10,
+            proxies={'http': None, 'https': None}
+        )
+        return resp.json() if resp.status_code == 200 else None
+    except Exception:
+        return None
 
 
 MANAGER_TEMPLATE = r"""
@@ -106,6 +121,7 @@ MANAGER_TEMPLATE = r"""
         .btn-default:hover { background:#595959; }
         .btn-danger { background:#4d1a1a; color:#ff6c59; border-color:#ff6c59; }
         .btn-danger:hover { background:#ff6c59; color:#fff; }
+        .btn-sm { padding:3px 8px; font-size:11px; }
         .content { padding:16px 20px; }
         .panel { background:#262626; border:1px solid #404040; border-radius:3px; margin-bottom:12px; }
         .panel-header { background:#333; padding:8px 12px; border-bottom:1px solid #404040; font-weight:600; color:#47a8ff; font-size:12px; }
@@ -118,21 +134,41 @@ MANAGER_TEMPLATE = r"""
         .toggle-on::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; right:2px; transition:0.3s; }
         .toggle-off { background:#666; }
         .toggle-off::after { content:''; position:absolute; width:18px; height:18px; background:#fff; border-radius:50%; top:2px; left:2px; transition:0.3s; }
-        .module-table { width:100%; border-collapse:collapse; font-size:12px; }
+
+        /* Единая таблица модулей */
+        .module-table { width:100%; border-collapse:collapse; font-size:12px; table-layout:fixed; }
         .module-table th { background:#333; padding:8px 10px; text-align:left; color:#47a8ff; font-weight:600; border-bottom:1px solid #404040; }
-        .module-table td { padding:8px 10px; border-bottom:1px solid #333; }
+        .module-table td { padding:8px 10px; border-bottom:1px solid #333; vertical-align:middle; }
         .module-table tr:hover { background:#2d2d2d; }
         .module-table tr.disabled td { color:#666; }
+        .col-name { width:22%; }
+        .col-desc { width:28%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .col-port { width:10%; text-align:center; }
+        .col-toggle { width:10%; text-align:center; }
+        .col-actions { width:15%; text-align:center; }
+        .col-delete { width:15%; text-align:center; }
+
+        .port-running { color:#21bf4b; font-weight:600; }
+        .port-stopped { color:#ff6c59; }
+        .port-offline { color:#666; }
+
         .toggle-btn { width:36px; height:20px; border-radius:10px; border:none; cursor:pointer; position:relative; transition:background 0.3s; }
         .toggle-btn.on { background:#21bf4b; }
         .toggle-btn.on::after { content:''; position:absolute; width:14px; height:14px; background:#fff; border-radius:50%; top:3px; right:3px; transition:0.3s; }
         .toggle-btn.off { background:#666; }
         .toggle-btn.off::after { content:''; position:absolute; width:14px; height:14px; background:#fff; border-radius:50%; top:3px; left:3px; transition:0.3s; }
         .toggle-btn:disabled { opacity:0.4; cursor:not-allowed; }
-        .btn-delete { background:none; border:1px solid #ff6c59; color:#ff6c59; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
+
+        .btn-delete { background:none; border:1px solid #ff6c59; color:#ff6c59; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
         .btn-delete:hover { background:#ff6c59; color:#fff; }
         .btn-delete:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
+        .btn-restart { background:none; border:1px solid #47a8ff; color:#47a8ff; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
+        .btn-restart:hover { background:#47a8ff; color:#fff; }
+        .btn-admin { background:none; border:1px solid #ff9800; color:#ff9800; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
+        .btn-admin:hover { background:#ff9800; color:#fff; }
+
         .error-msg { background:#3d1a1a; border:1px solid #ff6c59; border-radius:3px; padding:8px 12px; margin-bottom:12px; color:#ff6c59; font-size:12px; }
+
         /* Модальное окно подтверждения удаления */
         .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:100; justify-content:center; align-items:center; }
         .modal-overlay.active { display:flex; }
@@ -143,6 +179,9 @@ MANAGER_TEMPLATE = r"""
         .modal-body .warning-icon { color:#ff6c59; font-size:24px; margin-bottom:8px; }
         .modal-body .module-name { color:#fff; font-weight:600; }
         .modal-footer { padding:12px 16px; display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #404040; }
+
+        .spinner-sm { display:inline-block; width:14px; height:14px; border:2px solid #404040; border-top-color:#47a8ff; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; }
+        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -152,6 +191,7 @@ MANAGER_TEMPLATE = r"""
             <div class="header-info">Управление модулями оболочки</div>
         </div>
         <div class="controls">
+            <span id="adminStatus" style="font-size:12px;margin-right:10px;"></span>
             <button class="btn btn-primary" onclick="saveAndRestart()">Применить и перезапустить</button>
         </div>
     </div>
@@ -169,7 +209,7 @@ MANAGER_TEMPLATE = r"""
                 </div>
                 <table class="module-table">
                     <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="serviceModules"></tbody>
                 </table>
@@ -181,7 +221,7 @@ MANAGER_TEMPLATE = r"""
             <div class="panel-body">
                 <table class="module-table">
                     <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="usualModules"></tbody>
                 </table>
@@ -193,7 +233,7 @@ MANAGER_TEMPLATE = r"""
             <div class="panel-body">
                 <table class="module-table">
                     <thead>
-                        <tr><th>Модуль</th><th>Описание</th><th>Включён</th><th>Удалить</th></tr>
+                        <tr><th class="col-name">Модуль</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Действия</th><th class="col-delete">Удалить</th></tr>
                     </thead>
                     <tbody id="gameModules"></tbody>
                 </table>
@@ -222,8 +262,10 @@ MANAGER_TEMPLATE = r"""
 
     <script>
         let modules = [];
+        let statuses = {};
         let currentConfig = {};
         let lockEnabled = true;
+        let isAdmin = false;
         let pendingDeleteName = null;
 
         async function loadModules() {
@@ -234,10 +276,25 @@ MANAGER_TEMPLATE = r"""
                 modules = data.modules || [];
                 currentConfig = data.config || {};
                 hideError();
-                renderModules();
             } catch(e) {
                 showError('Не удалось загрузить список модулей: ' + e.message);
+                modules = [];
             }
+            // Загружаем статусы портов от Shell
+            await loadStatuses();
+            renderModules();
+        }
+
+        async function loadStatuses() {
+            try {
+                const r = await fetch('/api/modules_status');
+                if (!r.ok) return;
+                const data = await r.json();
+                statuses = {};
+                (data.modules || []).forEach(m => {
+                    statuses[m.name] = { port: m.port, running: m.running };
+                });
+            } catch(e) {}
         }
 
         function showError(msg) {
@@ -269,15 +326,42 @@ MANAGER_TEMPLATE = r"""
                 const configKey = type;
                 const enabled = (currentConfig[configKey] === 'all' || (currentConfig[configKey] || '').split(',').map(s=>s.trim()).includes(m.name));
                 const isService = type === 'service';
+                const st = statuses[m.name] || {};
+                const running = st.running || false;
+                const port = st.port || 0;
+                const needsAdmin = m.requires_admin || false;
 
+                // Порт
+                let portHtml = '';
+                if (running && port) {
+                    portHtml = '<span class="port-running">' + port + '</span>';
+                } else if (port) {
+                    portHtml = '<span class="port-stopped">' + port + '</span>';
+                } else {
+                    portHtml = '<span class="port-offline">—</span>';
+                }
+
+                // Тоггл
                 const btnClass = enabled ? 'toggle-btn on' : 'toggle-btn off';
                 const rowClass = enabled ? '' : 'disabled';
                 const deleteDisabled = (lockEnabled && isService) ? ' disabled' : '';
+
+                // Кнопки действий
+                let actionsHtml = '';
+                if (running) {
+                    actionsHtml += '<button class="btn btn-sm btn-restart" onclick="restartModule(\'' + escHtml(m.name) + '\')">Restart</button> ';
+                }
+                if (needsAdmin && !isAdmin) {
+                    actionsHtml += '<button class="btn btn-sm btn-admin" onclick="restartElevated(\'' + escHtml(m.name) + '\')">Run Admin</button>';
+                }
+
                 const row = '<tr class="' + rowClass + '">'
-                    + '<td><strong>' + escHtml(m.title) + '</strong></td>'
-                    + '<td>' + escHtml(m.description) + '</td>'
-                    + '<td><button class="' + btnClass + '" data-name="' + escHtml(m.name) + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
-                    + '<td><button class="btn-delete" data-name="' + escHtml(m.name) + '" data-type="' + escHtml(type) + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
+                    + '<td class="col-name"><strong>' + escHtml(m.title) + '</strong></td>'
+                    + '<td class="col-desc">' + escHtml(m.description) + '</td>'
+                    + '<td class="col-port">' + portHtml + '</td>'
+                    + '<td class="col-toggle"><button class="' + btnClass + '" data-name="' + escHtml(m.name) + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
+                    + '<td class="col-actions">' + actionsHtml + '</td>'
+                    + '<td class="col-delete"><button class="btn-delete" data-name="' + escHtml(m.name) + '" data-type="' + escHtml(type) + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
                     + '</tr>';
 
                 if (type === 'service') serviceHtml += row;
@@ -285,8 +369,8 @@ MANAGER_TEMPLATE = r"""
                 else usualHtml += row;
             });
 
-            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="4" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
-            usualBody.innerHTML = usualHtml || '<tr><td colspan="4" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
+            serviceBody.innerHTML = serviceHtml || '<tr><td colspan="6" style="color:#999;text-align:center;">Нет сервисных модулей</td></tr>';
+            usualBody.innerHTML = usualHtml || '<tr><td colspan="6" style="color:#999;text-align:center;">Нет обычных модулей</td></tr>';
 
             if (gameHtml) {
                 document.getElementById('gamePanel').style.display = '';
@@ -322,12 +406,31 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
+        async function restartModule(name) {
+            const btn = document.querySelector('button.btn-restart[onclick*="' + name + '"]');
+            if (btn) btn.innerHTML = '<span class="spinner-sm"></span>';
+            try {
+                const r = await fetch('/api/module_restart?name=' + encodeURIComponent(name));
+                await r.json();
+                setTimeout(async () => {
+                    await loadStatuses();
+                    renderModules();
+                }, 2000);
+            } catch(e) {
+                alert('Ошибка перезапуска: ' + e.message);
+                renderModules();
+            }
+        }
+
+        function restartElevated(name) {
+            window.parent.postMessage({action: 'restart-elevated', module: name}, '*');
+        }
+
         function deleteModule(btn) {
             const name = btn.dataset.name;
             const type = btn.dataset.type;
 
             if (type === 'service') {
-                // Показать модальное окно для сервисных модулей
                 pendingDeleteName = name;
                 document.getElementById('deleteModalName').textContent = name;
                 document.getElementById('deleteModal').classList.add('active');
@@ -336,7 +439,6 @@ MANAGER_TEMPLATE = r"""
                     executeDelete(pendingDeleteName);
                 };
             } else {
-                // Обычное подтверждение для остальных
                 if (!confirm('Удалить модуль "' + name + '"?')) return;
                 executeDelete(name);
             }
@@ -393,7 +495,22 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
+        async function checkAdminStatus() {
+            try {
+                const r = await fetch('/api/admin-status');
+                const d = await r.json();
+                isAdmin = d.is_admin;
+                const statusEl = document.getElementById('adminStatus');
+                if (isAdmin) {
+                    statusEl.innerHTML = '<span style="color:#21bf4b;">&#10003; Admin</span>';
+                } else {
+                    statusEl.innerHTML = '<span style="color:#ffcc00;">&#9888; Not Admin</span>';
+                }
+            } catch(e) {}
+        }
+
         loadModules();
+        checkAdminStatus();
     </script>
 </body>
 </html>
@@ -413,6 +530,38 @@ def api_modules_list():
     })
 
 
+@app.route('/api/modules_status')
+def api_modules_status():
+    """Получение текущих портов и статусов запуска модулей от Shell."""
+    data = shell_api_get('/api/modules')
+    if data:
+        return jsonify({'modules': data})
+    return jsonify({'modules': []})
+
+
+@app.route('/api/module_restart')
+def api_module_restart():
+    """Перезапуск модуля через Shell API."""
+    name = request.args.get('name', '')
+    if not sanitize_name(name):
+        return jsonify({'error': 'Invalid name'}), 400
+    result = shell_api_post(f'/api/module/{name}/restart')
+    if result:
+        return jsonify(result)
+    return jsonify({'error': 'Failed to restart'}), 500
+
+
+@app.route('/api/admin-status')
+def api_admin_status():
+    """Проверка прав администратора."""
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+    return jsonify({'is_admin': is_admin})
+
+
 @app.route('/api/modules_save', methods=['POST'])
 def api_modules_save():
     data = request.get_json()
@@ -421,7 +570,6 @@ def api_modules_save():
     usual = data.get('usual', 'all')
     service = data.get('service', 'all')
     game = data.get('game', 'all')
-    # Валидация: значения должны быть строками
     for val in [usual, service, game]:
         if not isinstance(val, str):
             return jsonify({'error': 'Invalid config value'}), 400
@@ -436,23 +584,13 @@ def api_delete():
         return jsonify({'error': 'No data provided'}), 400
     name = data.get('name', '')
 
-    # Проверка имени на безопасность (защита от path traversal)
     if not sanitize_name(name):
         return jsonify({'error': 'Invalid module name'}), 400
 
     # Остановка модуля через Shell API
-    shell_port = get_shell_port()
     try:
-        resp = requests.post(
-            f'http://127.0.0.1:{shell_port}/api/module/{name}/stop',
-            timeout=5,
-            proxies={'http': None, 'https': None}
-        )
-        # Ждём завершения процесса (макс 3 сек)
-        if resp.status_code == 200:
-            time.sleep(2)
-        else:
-            time.sleep(1)
+        resp = shell_api_post(f'/api/module/{name}/stop')
+        time.sleep(2)
     except Exception:
         time.sleep(1)
 

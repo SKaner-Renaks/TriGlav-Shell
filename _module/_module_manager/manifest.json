@@ -1,11 +1,11 @@
 {
   "name": "module_manager",
   "title": "Модули",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "Управление запуском модулей оболочки",
   "type": "service",
-  "requires_admin": false,
-  "current_port": 5008,
+  "requires_admin": true,
+  "current_port": 5083,
   "languages": [
     "ru",
     "en"
