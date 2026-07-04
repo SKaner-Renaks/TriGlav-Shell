@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.3.0'
+VERSION = '1.3.1'
 
 app = Flask(__name__)
 
@@ -597,7 +597,8 @@ def api_module_open_folder(name):
     if not mod_path or not os.path.isdir(mod_path):
         return jsonify({'error': 'Folder not found'}), 404
     try:
-        os.startfile(mod_path)
+        import ctypes
+        ctypes.windll.shell32.ShellExecuteW(None, 'open', 'explorer.exe', mod_path, None, 1)
         return jsonify({'status': 'ok', 'path': mod_path})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -870,7 +871,7 @@ SHELL_TEMPLATE = r"""
             const infoEl = document.getElementById('module-info');
             if (infoEl) {
                 const adminTag = mod.requires_admin ? ' | Admin' : '';
-                infoEl.textContent = mod.name + ' [' + mod.type + adminTag + ']';
+                infoEl.innerHTML = '<span style=''color:#fff;font-weight:600;''>' + mod.name + '</span> [' + mod.type + adminTag + ']';
             }
             // Show folder button only on localhost
             const folderBtn = document.getElementById('module-folder-btn');
