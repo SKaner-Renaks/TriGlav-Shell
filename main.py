@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.2.9'
+VERSION = '1.3.0'
 
 app = Flask(__name__)
 
@@ -585,6 +585,23 @@ def proxy(port, path):
 
 
 
+
+@app.route('/api/module/<name>/open-folder', methods=['POST'])
+@login_required
+def api_module_open_folder(name):
+    modules = discover_modules()
+    manifest = next((m for m in modules if m['name'] == name), None)
+    if not manifest:
+        return jsonify({'error': 'Module not found'}), 404
+    mod_path = manifest.get('_path', '')
+    if not mod_path or not os.path.isdir(mod_path):
+        return jsonify({'error': 'Folder not found'}), 404
+    try:
+        os.startfile(mod_path)
+        return jsonify({'status': 'ok', 'path': mod_path})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/module/<name>/log-file', methods=['GET'])
 @login_required
 def api_module_log_file(name):
@@ -763,6 +780,7 @@ SHELL_TEMPLATE = r"""
                 <button class="btn btn-sm btn-default" onclick="restartModule()">Restart</button>
                 {% if environment == 'development' %}
                 <a id="module-web-link" href="#" target="_blank" class="btn btn-sm btn-default" style="text-decoration:none;display:none;">Web</a>
+                <button id="module-folder-btn" class="btn btn-sm btn-default" onclick="openFolder()" style="display:none;">Folder</button>
                 <label style="font-size:11px;color:#999;margin-left:8px;cursor:pointer;">
                     <input type="checkbox" id="logToggle" onchange="toggleLog()" style="accent-color:#0057b3;"> Log
                 </label>
@@ -852,7 +870,13 @@ SHELL_TEMPLATE = r"""
             const infoEl = document.getElementById('module-info');
             if (infoEl) {
                 const adminTag = mod.requires_admin ? ' | Admin' : '';
-                infoEl.textContent = '[' + mod.type + adminTag + ']';
+                infoEl.textContent = mod.name + ' [' + mod.type + adminTag + ']';
+            }
+            // Show folder button only on localhost
+            const folderBtn = document.getElementById('module-folder-btn');
+            if (folderBtn) {
+                const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
+                folderBtn.style.display = isLocal ? 'inline-block' : 'none';
             }
             
             // Update Web link (development mode only)
@@ -1102,6 +1126,19 @@ SHELL_TEMPLATE = r"""
         updateClock();
         setInterval(updateClock, 60000);
         setInterval(loadModules, 10000);
+
+                async function openFolder() {
+            if (!currentModule) return;
+            try {
+                const r = await fetch('/api/module/' + currentModule + '/open-folder', { method: 'POST' });
+                const d = await r.json();
+                if (d.status !== 'ok') {
+                    alert(d.error || 'Failed to open folder');
+                }
+            } catch(e) {
+                alert('Error: ' + e.message);
+            }
+        }
 
         async function openLog() {
             if (!currentModule) return;
