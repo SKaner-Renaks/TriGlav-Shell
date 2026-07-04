@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import shutil
 import time
@@ -8,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.2.1'
+VERSION = '1.2.2'
 
 app = Flask(__name__)
 
@@ -21,6 +22,11 @@ def load_config():
     cfg = configparser.ConfigParser()
     cfg.read(CONFIG_PATH, encoding='utf-8')
     return cfg
+
+
+def get_shell_port():
+    cfg = load_config()
+    return int(cfg.get('shell', 'port', fallback='8080'))
 
 
 def get_autostart_config():
@@ -39,6 +45,27 @@ def save_autostart_config(usual, service, game='all'):
     cfg.set('modules_auto_start', 'game', game)
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         cfg.write(f)
+
+
+def sanitize_name(name):
+    """Проверка имени модуля на безопасность — только буквы, цифры, подчёркивание."""
+    if not name or not re.match(r'^[a-zA-Z0-9_]+$', name):
+        return False
+    if '..' in name or '/' in name or '\\' in name:
+        return False
+    return True
+
+
+def escape_html(text):
+    """Экранирование HTML-символов для предотвращения XSS."""
+    if not text:
+        return ''
+    return (str(text)
+            .replace('&', '&amp;')
+            .replace('<', '&lt;')
+            .replace('>', '&gt;')
+            .replace('"', '&quot;')
+            .replace("'", '&#39;'))
 
 
 def get_all_modules():
@@ -77,6 +104,8 @@ MANAGER_TEMPLATE = r"""
         .btn-primary:hover { background:#0073d9; }
         .btn-default { background:#404040; color:#f2f2f2; }
         .btn-default:hover { background:#595959; }
+        .btn-danger { background:#4d1a1a; color:#ff6c59; border-color:#ff6c59; }
+        .btn-danger:hover { background:#ff6c59; color:#fff; }
         .content { padding:16px 20px; }
         .panel { background:#262626; border:1px solid #404040; border-radius:3px; margin-bottom:12px; }
         .panel-header { background:#333; padding:8px 12px; border-bottom:1px solid #404040; font-weight:600; color:#47a8ff; font-size:12px; }
@@ -103,6 +132,17 @@ MANAGER_TEMPLATE = r"""
         .btn-delete { background:none; border:1px solid #ff6c59; color:#ff6c59; border-radius:3px; padding:2px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
         .btn-delete:hover { background:#ff6c59; color:#fff; }
         .btn-delete:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
+        .error-msg { background:#3d1a1a; border:1px solid #ff6c59; border-radius:3px; padding:8px 12px; margin-bottom:12px; color:#ff6c59; font-size:12px; }
+        /* Модальное окно подтверждения удаления */
+        .modal-overlay { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:100; justify-content:center; align-items:center; }
+        .modal-overlay.active { display:flex; }
+        .modal-panel { background:#262626; border:1px solid #404040; border-radius:4px; width:420px; max-height:80vh; overflow:hidden; }
+        .modal-header { background:#333; padding:10px 14px; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #404040; }
+        .modal-header h3 { color:#ff6c59; font-size:14px; }
+        .modal-body { padding:16px; font-size:13px; line-height:1.6; }
+        .modal-body .warning-icon { color:#ff6c59; font-size:24px; margin-bottom:8px; }
+        .modal-body .module-name { color:#fff; font-weight:600; }
+        .modal-footer { padding:12px 16px; display:flex; gap:8px; justify-content:flex-end; border-top:1px solid #404040; }
     </style>
 </head>
 <body>
@@ -116,13 +156,15 @@ MANAGER_TEMPLATE = r"""
         </div>
     </div>
     <div class="content">
+        <div id="errorBanner" class="error-msg" style="display:none;"></div>
+
         <div class="panel">
             <div class="panel-header">Сервисные модули</div>
             <div class="panel-body">
                 <div class="warning">Модули нужны для работы оболочки. Отключение может повлиять на функциональность.</div>
                 <div class="lock-row">
                     <span class="lock-label">Блокировка:</span>
-                    <button class="toggle toggle-off" id="lockToggle" onclick="toggleLock()"></button>
+                    <button class="toggle toggle-on" id="lockToggle" onclick="toggleLock()"></button>
                     <span class="lock-label" id="lockStatus">Включена</span>
                 </div>
                 <table class="module-table">
@@ -159,19 +201,59 @@ MANAGER_TEMPLATE = r"""
         </div>
     </div>
 
+    <!-- Модальное окно подтверждения удаления сервисного модуля -->
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal-panel">
+            <div class="modal-header">
+                <h3>Удаление сервисного модуля</h3>
+                <button onclick="closeDeleteModal()" style="background:none;border:none;color:#999;font-size:20px;cursor:pointer;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="warning-icon">&#9888;</div>
+                <p>Вы пытаетесь удалить <span class="module-name" id="deleteModalName"></span> — это <strong>сервисный модуль</strong>, необходимый для работы оболочки.</p>
+                <p style="margin-top:8px;color:#999;">Удаление может нарушить функциональность TriGlav Shell.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-default" onclick="closeDeleteModal()">Отмена</button>
+                <button class="btn btn-danger" id="deleteConfirmBtn">Удалить</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let modules = [];
         let currentConfig = {};
         let lockEnabled = true;
+        let pendingDeleteName = null;
 
         async function loadModules() {
             try {
                 const r = await fetch('/api/modules_list');
+                if (!r.ok) throw new Error('HTTP ' + r.status);
                 const data = await r.json();
                 modules = data.modules || [];
                 currentConfig = data.config || {};
+                hideError();
                 renderModules();
-            } catch(e) {}
+            } catch(e) {
+                showError('Не удалось загрузить список модулей: ' + e.message);
+            }
+        }
+
+        function showError(msg) {
+            const banner = document.getElementById('errorBanner');
+            banner.textContent = msg;
+            banner.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorBanner').style.display = 'none';
+        }
+
+        function escHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
         }
 
         function renderModules() {
@@ -192,10 +274,10 @@ MANAGER_TEMPLATE = r"""
                 const rowClass = enabled ? '' : 'disabled';
                 const deleteDisabled = (lockEnabled && isService) ? ' disabled' : '';
                 const row = '<tr class="' + rowClass + '">'
-                    + '<td><strong>' + m.title + '</strong></td>'
-                    + '<td>' + (m.description || '') + '</td>'
-                    + '<td><button class="' + btnClass + '" data-name="' + m.name + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
-                    + '<td><button class="btn-delete" data-name="' + m.name + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
+                    + '<td><strong>' + escHtml(m.title) + '</strong></td>'
+                    + '<td>' + escHtml(m.description) + '</td>'
+                    + '<td><button class="' + btnClass + '" data-name="' + escHtml(m.name) + '" onclick="toggleModule(this)"' + (lockEnabled && isService ? ' disabled' : '') + '></button></td>'
+                    + '<td><button class="btn-delete" data-name="' + escHtml(m.name) + '" data-type="' + escHtml(type) + '" onclick="deleteModule(this)"' + deleteDisabled + '>Удалить</button></td>'
                     + '</tr>';
 
                 if (type === 'service') serviceHtml += row;
@@ -222,8 +304,9 @@ MANAGER_TEMPLATE = r"""
             const m = modules.find(m => m.name === name);
             if (!m) return;
 
-            const key = m.type || 'usual';
-            let list = currentConfig[key] === 'all' ? modules.filter(x => (x.type || 'usual') === m.type).map(x => x.name) : (currentConfig[key] || '').split(',').map(s => s.trim());
+            const modType = m.type || 'usual';
+            const key = modType;
+            let list = currentConfig[key] === 'all' ? modules.filter(x => (x.type || 'usual') === modType).map(x => x.name) : (currentConfig[key] || '').split(',').map(s => s.trim());
 
             if (isOn) {
                 list = list.filter(n => n !== name);
@@ -231,7 +314,7 @@ MANAGER_TEMPLATE = r"""
                 if (!list.includes(name)) list.push(name);
             }
 
-            const allNames = modules.filter(x => x.type === m.type).map(x => x.name);
+            const allNames = modules.filter(x => (x.type || 'usual') === modType).map(x => x.name);
             if (list.length === allNames.length) {
                 currentConfig[key] = 'all';
             } else {
@@ -239,9 +322,32 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
-        async function deleteModule(btn) {
+        function deleteModule(btn) {
             const name = btn.dataset.name;
-            if (!confirm('Удалить модуль "' + name + '"?')) return;
+            const type = btn.dataset.type;
+
+            if (type === 'service') {
+                // Показать модальное окно для сервисных модулей
+                pendingDeleteName = name;
+                document.getElementById('deleteModalName').textContent = name;
+                document.getElementById('deleteModal').classList.add('active');
+                document.getElementById('deleteConfirmBtn').onclick = function() {
+                    closeDeleteModal();
+                    executeDelete(pendingDeleteName);
+                };
+            } else {
+                // Обычное подтверждение для остальных
+                if (!confirm('Удалить модуль "' + name + '"?')) return;
+                executeDelete(name);
+            }
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').classList.remove('active');
+            pendingDeleteName = null;
+        }
+
+        async function executeDelete(name) {
             try {
                 const r = await fetch('/api/delete', {
                     method: 'POST',
@@ -270,14 +376,18 @@ MANAGER_TEMPLATE = r"""
 
         async function saveAndRestart() {
             try {
-                await fetch('/api/modules_save', {
+                const r = await fetch('/api/modules_save', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify(currentConfig)
                 });
-                setTimeout(() => {
-                    window.parent.postMessage({action: 'restart-shell'}, '*');
-                }, 500);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const d = await r.json();
+                if (d.status === 'saved') {
+                    setTimeout(() => {
+                        window.parent.postMessage({action: 'restart-shell'}, '*');
+                    }, 500);
+                }
             } catch(e) {
                 alert('Ошибка сохранения: ' + e.message);
             }
@@ -306,9 +416,15 @@ def api_modules_list():
 @app.route('/api/modules_save', methods=['POST'])
 def api_modules_save():
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     usual = data.get('usual', 'all')
     service = data.get('service', 'all')
     game = data.get('game', 'all')
+    # Валидация: значения должны быть строками
+    for val in [usual, service, game]:
+        if not isinstance(val, str):
+            return jsonify({'error': 'Invalid config value'}), 400
     save_autostart_config(usual, service, game)
     return jsonify({'status': 'saved'})
 
@@ -316,16 +432,29 @@ def api_modules_save():
 @app.route('/api/delete', methods=['POST'])
 def api_delete():
     data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
     name = data.get('name', '')
-    if not name:
-        return jsonify({'error': 'No name provided'}), 400
 
+    # Проверка имени на безопасность (защита от path traversal)
+    if not sanitize_name(name):
+        return jsonify({'error': 'Invalid module name'}), 400
+
+    # Остановка модуля через Shell API
+    shell_port = get_shell_port()
     try:
-        requests.post(f'http://127.0.0.1:8080/api/module/{name}/stop', timeout=5)
+        resp = requests.post(
+            f'http://127.0.0.1:{shell_port}/api/module/{name}/stop',
+            timeout=5,
+            proxies={'http': None, 'https': None}
+        )
+        # Ждём завершения процесса (макс 3 сек)
+        if resp.status_code == 200:
+            time.sleep(2)
+        else:
+            time.sleep(1)
     except Exception:
-        pass
-
-    time.sleep(1)
+        time.sleep(1)
 
     mod_dir = os.path.join(SHELL_DIR, '_module', name)
     if os.path.isdir(mod_dir):
@@ -333,14 +462,14 @@ def api_delete():
             shutil.rmtree(mod_dir)
             return jsonify({'status': 'deleted'})
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': f'Failed to delete: {str(e)}'}), 500
     return jsonify({'error': 'Not found'}), 404
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
-    parser.add_argument('--port', type=int, default=5008)
+    parser.add_argument('--port', type=int, default=5000)
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 
