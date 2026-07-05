@@ -387,6 +387,7 @@ def api_modules():
             'requires_admin': m.get('requires_admin', False),
             'port': module_ports.get(name, m.get('current_port', 0)),
             'running': check_module_health(name),
+            'log_enabled': module_log_enabled.get(name, False),
         })
     return jsonify(result)
 
@@ -973,6 +974,12 @@ SHELL_TEMPLATE = r"""
             if (folderBtn) {
                 const isLocal = location.hostname === '127.0.0.1' || location.hostname === 'localhost';
                 folderBtn.style.display = isLocal ? 'inline-block' : 'none';
+            }
+            
+            // Set Log checkbox state
+            const logToggle = document.getElementById('logToggle');
+            if (logToggle) {
+                logToggle.checked = mod.log_enabled || false;
             }
             
             // Update Web link (development mode only)
