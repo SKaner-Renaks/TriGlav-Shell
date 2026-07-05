@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0'
+VERSION = '1.0.1'
 
 app = Flask(__name__)
 
@@ -388,20 +388,18 @@ PLAYER_TEMPLATE = r"""
             border: none;
             color: var(--text);
             cursor: pointer;
-            width: 44px;
-            height: 44px;
+            width: 56px;
+            height: 56px;
             display: flex;
             align-items: center;
             justify-content: center;
             border-radius: 50%;
-            transition: background 0.15s;
+            transition: color 0.15s;
         }
-        .ctrl-btn:hover { background: var(--hover); }
-        .ctrl-btn img { width: 28px; height: 28px; }
-        .ctrl-btn.play-btn { background: var(--accent); width: 56px; height: 56px; }
-        .ctrl-btn.play-btn:hover { opacity: 0.85; }
-        .ctrl-btn.play-btn img { width: 36px; height: 36px; filter: brightness(0) invert(1); }
-        .ctrl-btn.active-mode { color: var(--accent); }
+        .ctrl-btn:hover { color: var(--accent); }
+        .ctrl-btn img { width: 56px; height: 56px; transition: filter 0.15s; }
+        .ctrl-btn.active { color: var(--accent); }
+        .ctrl-btn.active img { filter: drop-shadow(0 0 6px var(--accent)); }
 
         /* MODE BUTTONS */
         .mode-btn {
@@ -416,9 +414,10 @@ PLAYER_TEMPLATE = r"""
             align-items: center;
             justify-content: center;
         }
-        .mode-btn:hover { color: var(--text); }
+        .mode-btn:hover { color: var(--accent); }
         .mode-btn.active { color: var(--accent); }
-        .mode-btn img { width: 20px; height: 20px; }
+        .mode-btn img { width: 40px; height: 40px; transition: filter 0.15s; }
+        .mode-btn.active img { filter: drop-shadow(0 0 6px var(--accent)); }
 
         /* MODAL */
         .modal-overlay {
@@ -515,7 +514,7 @@ PLAYER_TEMPLATE = r"""
             <div class="controls">
                 <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><img src="/_images/shuffle.svg"></button>
                 <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><img src="/_images/skip_previous.svg"></button>
-                <button class="ctrl-btn play-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><img id="playIcon" src="/_images/play_circle.svg"></button>
+                <button class="ctrl-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><img id="playIcon" src="/_images/play_circle.svg"></button>
                 <button class="ctrl-btn" onclick="nextTrack()" title="Следующий"><img src="/_images/skip_next.svg"></button>
                 <button class="mode-btn" id="btnRepeat" onclick="toggleRepeat()" title="Повтор"><img id="repeatIcon" src="/_images/repeat.svg"></button>
             </div>
@@ -674,6 +673,7 @@ PLAYER_TEMPLATE = r"""
             audio.src = '/module-music/mp3_player/' + encodeURIComponent(t.file);
             audio.play();
             document.getElementById('playIcon').src = '/_images/pause_circle.svg';
+            document.getElementById('btnPlay').classList.add('active');
             document.getElementById('npTitle').textContent = t.title || t.filename;
             document.getElementById('npArtist').textContent = [t.artist, t.album].filter(Boolean).join(' — ');
             document.getElementById('npFile').textContent = t.file;
@@ -691,9 +691,11 @@ PLAYER_TEMPLATE = r"""
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
                 audio.play();
                 document.getElementById('playIcon').src = '/_images/pause_circle.svg';
+                document.getElementById('btnPlay').classList.add('active');
             } else {
                 audio.pause();
                 document.getElementById('playIcon').src = '/_images/play_circle.svg';
+                document.getElementById('btnPlay').classList.remove('active');
             }
         }
 
@@ -728,6 +730,7 @@ PLAYER_TEMPLATE = r"""
                 nextTrack();
             } else {
                 document.getElementById('playIcon').src = '/_images/play_circle.svg';
+                document.getElementById('btnPlay').classList.remove('active');
             }
         });
 
