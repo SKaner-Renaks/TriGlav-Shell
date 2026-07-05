@@ -921,14 +921,14 @@ SHELL_TEMPLATE = r"""
             
             if (mod.running && mod.port) {
                 document.getElementById('content-header').style.display = 'flex';
-                document.getElementById('module-name').innerHTML = '<img src="/_images/frame_bug.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;filter:invert(1);">Информация';
+                document.getElementById('module-name').innerHTML = '<img src="/_images/frame_bug.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Информация';
                 document.getElementById('module-port').textContent = ':' + mod.port;
                 document.getElementById('module-frame').src = '/proxy/' + mod.port + '/';
                 document.getElementById('module-frame').style.display = 'block';
                 document.getElementById('placeholder').style.display = 'none';
             } else {
                 document.getElementById('content-header').style.display = 'flex';
-                document.getElementById('module-name').innerHTML = '<img src="/_images/frame_bug.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;filter:invert(1);">Информация';
+                document.getElementById('module-name').innerHTML = '<img src="/_images/frame_bug.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Информация';
                 document.getElementById('module-port').textContent = 'not running';
                 document.getElementById('module-frame').style.display = 'none';
                 document.getElementById('placeholder').style.display = 'flex';
