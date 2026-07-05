@@ -39,6 +39,7 @@ _data/
   encrypt.py         Шифрование care.env (XOR+base64)
   care.env           Хранилище секретов (auto-created)
   log_file.log       Лог Shell (Development mode)
+  hystory.md         История изменений Shell
   _lang/             Локализация (ru.json, en.json)
   _ps/               PowerShell скрипты Shell
   _images/           SVG-иконки (gear, developer_board)
@@ -48,11 +49,14 @@ _module/             Автообнаружение модулей
   control/           Панель управления   (port 5003)   v1.5     type=usual
   invaders/          Космические захватчики (port 5004) v1.2    type=game
   snake/             Змейка              (port 5007)   v1.2     type=game
+  flip_clock/        Flip Clock          (port 5042)   v1.1     type=game
   smb_explorer/      SMB Explorer        (port 5006)   v3.2     type=usual
   _deps_checker/     Проверка зависимостей (port 5000) v1.2.2  type=service
   _module_manager/   Управление модулями (port 5001)   v1.3.8  type=service (requires_admin)
   _updater/          Обновления из GitHub (port 5002)  v1.4.1  type=service
 ```
+
+> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.0'`, но HANDOFF.md и этот файл указывают `1.5.1`. Синхронизировать при следующем коммите.
 
 ## Типы модулей
 
@@ -136,9 +140,13 @@ game = all                     # или: snake,invaders
 - Development: порты из manifest.json используются как есть.
 - Shell проверяет: если `current_port` пустой или `0` — генерирует порт через `5000 + hash(name) % 100`.
 
+### Порядок модулей
+
+Порядок отображения в sidebar сохраняется в `config.cfg` секция `[module_order]`. Пользователь может перетаскиванием (drag-drop) менять порядок — фронтенд отправляет `POST /api/module_order` с массивом имён. При старте Shell сортирует модули по этому списку.
+
 ### Логирование
 
-Только в Development mode. Включается чекбоксом Log в content header. Модуль перезапускается с флагом `--log`, пишет в `log_file.log` в своей папке.
+Только в Development mode. Включается чекбоксом Log в content header. Модуль перезапускается с флагом `--log`, пишет в `log_file.log` в своей папке. Состояние чекбокса сохраняется в `config.cfg` секция `[log_enabled]`.
 
 ### Log file naming
 
@@ -146,10 +154,18 @@ game = all                     # или: snake,invaders
 - Лог Shell = `_data/log_file.log`
 - Единое имя для всех
 
+### Доступ модулей к конфигу Shell
+
+Модули вычисляют путь к конфигу Shell через `os.path.dirname(os.path.dirname(BASE_DIR))` (два уровня вверх от папки модуля). Не импортируют общий конфиг — читают `config.cfg` напрямую через `configparser`.
+
+### Шаблоны HTML
+
+Shell и модули хранят HTML-шаблоны прямо в Python-кодах (`render_template_string`). Отдельных `.html` файлов нет.
+
 ### module_manager
 
 - Сервисный модуль с `requires_admin: true`
-- Показывает порты и статус запуска всех модулей (запрашивает Shell API)
+- Показывает порты и статус запуска всех модулей (запрашивает Shell API через `requests`)
 - Кнопка **Restart** для каждого модуля (блокируется при включённой блокировке для сервисных)
 - Кнопка **Remove** с модальным подтверждением для сервисных модулей
 - Колонка **Версия** в таблицах модулей

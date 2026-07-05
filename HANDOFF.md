@@ -1,6 +1,6 @@
 # HANDOFF — TriGlav Shell Project Session
 **Дата**: 2026-07-05
-**Сессия**: ses_0d19cbcf5ffeWzNOgBOjwSnElG
+**Сессия**: ses_0cd849e14ffeD4VNRWi1RkcvCR
 
 ---
 
@@ -13,6 +13,7 @@
 - **monitor**: v1.5
 - **invaders**: v1.2
 - **snake**: v1.2
+- **flip_clock**: v1.1
 - **smb_explorer**: v3.2
 - **deps_checker**: v1.2.2
 - **updater**: v1.4.1
@@ -24,6 +25,7 @@
 C:\ARS\Mimo\Task Server\
 ├── main.py              Ядро Shell (port 8080) v1.5.1
 ├── AGENTS.md            Документация для AI
+├── HANDOFF.md           Передача сессии
 ├── task.md              ТЗ проекта
 ├── task_updater.md      ТЗ модуля обновлений
 ├── requirements.txt     flask, requests, psutil, ldap3
@@ -34,7 +36,7 @@ C:\ARS\Mimo\Task Server\
 │   ├── encrypt.py       Шифрование care.env (XOR+base64)
 │   ├── care.env         Хранилище секретов (auto-created)
 │   ├── log_file.log     Лог Shell (Development mode)
-│   ├── hystory.md       История изменений
+│   ├── hystory.md       История изменений Shell
 │   ├── _lang\
 │   │   ├── ru.json      Русская локализация
 │   │   └── en.json      Английская локализация
@@ -49,6 +51,7 @@ C:\ARS\Mimo\Task Server\
     ├── control\         Панель управления (port 5003) v1.5
     ├── invaders\        Космические захватчики (port 5004) v1.2
     ├── snake\           Змейка (port 5007) v1.2
+    ├── flip_clock\      Flip Clock (port 5042) v1.1
     ├── smb_explorer\    SMB Explorer (port 5006) v3.2
     ├── _deps_checker\   Проверка зависимостей (port 5000) v1.2.2
     ├── _module_manager\ Управление модулями (port 5001) v1.3.8
