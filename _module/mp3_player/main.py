@@ -695,14 +695,15 @@ PLAYER_TEMPLATE = r"""
         function switchEqualizer(name) {
             currentEQName = name;
             currentEQ = null;
-            fetch('/_equalizer/' + encodeURIComponent(name) + '.js')
-                .then(function(r){ return r.text(); })
-                .then(function(code){
-                    eval(code);
-                    if (typeof window.draw === 'function') {
-                        currentEQ = window.draw;
-                    }
-                });
+            var old = document.getElementById('eqScript');
+            if (old) old.remove();
+            var s = document.createElement('script');
+            s.id = 'eqScript';
+            s.src = '/_equalizer/' + encodeURIComponent(name) + '.js';
+            s.onload = function() {
+                if (typeof window.draw === 'function') currentEQ = window.draw;
+            };
+            document.body.appendChild(s);
         }
 
         /* AUDIO CONTEXT & EQ */
