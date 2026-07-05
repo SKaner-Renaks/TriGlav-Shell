@@ -492,7 +492,7 @@ PLAYER_TEMPLATE = r"""
                 <ul class="pl-list" id="plList"></ul>
             </div>
             <div class="left-section" style="padding-top:0;">
-                <h3>Треки <span id="trackCount"></span></h3>
+                <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button onclick="loadTracks()" title="Обновить список" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;"><svg viewBox="0 -960 960 960" fill="currentColor" width="14" height="14"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
                 <input class="search-box" id="searchBox" placeholder="Поиск..." oninput="filterTracks()">
             </div>
             <div class="track-list" id="trackList"></div>
