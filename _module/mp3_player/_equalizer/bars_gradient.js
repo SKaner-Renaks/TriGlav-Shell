@@ -1,5 +1,5 @@
 // bars_gradient — Градиентные частотные бары (зелёный → жёлтый → красный)
-function draw(ctx, data, w, h, mode) {
+window.draw = function(ctx, data, w, h, mode) {
     ctx.clearRect(0, 0, w, h);
     var bars = data.length;
     var barW = (w / bars) * 1.2;
@@ -15,4 +15,4 @@ function draw(ctx, data, w, h, mode) {
         ctx.fillStyle = g;
         ctx.fillRect(x, h - barH, barW, barH);
     }
-}
+};

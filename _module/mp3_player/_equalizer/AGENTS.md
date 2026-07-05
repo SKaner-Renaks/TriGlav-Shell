@@ -6,8 +6,12 @@ JS-файл в папке `_equalizer/`. Имя файла = имя эквала
 ## Обязательная функция
 
 ```javascript
-function draw(ctx, data, w, h, mode)
+window.draw = function(ctx, data, w, h, mode) {
+    // ...
+};
 ```
+
+Важно: функция ДОЛЖНА быть присвоена на `window.draw`, а не просто объявлена как `function draw()`. Это необходимо для корректной загрузки через `eval()`.
 
 - `ctx` — Canvas 2D context
 - `data` — Uint8Array частотных данных (analyser.frequencyBinCount)
@@ -31,7 +35,7 @@ function draw(ctx, data, w, h, mode)
 ## Пример minimal
 
 ```javascript
-function draw(ctx, data, w, h, mode) {
+window.draw = function(ctx, data, w, h, mode) {
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = '#47a8ff';
     var barW = w / data.length;
@@ -39,5 +43,5 @@ function draw(ctx, data, w, h, mode) {
         var barH = (data[i] / 255) * h;
         ctx.fillRect(i * barW, h - barH, barW - 1, barH);
     }
-}
+};
 ```

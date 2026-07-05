@@ -699,8 +699,8 @@ PLAYER_TEMPLATE = r"""
                 .then(function(r){ return r.text(); })
                 .then(function(code){
                     eval(code);
-                    if (typeof draw === 'function') {
-                        currentEQ = draw;
+                    if (typeof window.draw === 'function') {
+                        currentEQ = window.draw;
                     }
                 });
         }
