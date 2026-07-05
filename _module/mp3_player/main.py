@@ -657,14 +657,16 @@ PLAYER_TEMPLATE = r"""
         function drawEQ() {
             var canvas = document.getElementById('eqCanvas');
             var ctx = canvas.getContext('2d');
-            var w = canvas.parentElement.clientWidth;
-            var h = canvas.parentElement.clientHeight;
-            canvas.width = w;
-            canvas.height = h;
 
             function frame() {
                 requestAnimationFrame(frame);
                 if (!analyser) return;
+                var w = canvas.parentElement.clientWidth;
+                var h = canvas.parentElement.clientHeight;
+                if (canvas.width !== w || canvas.height !== h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                }
                 analyser.getByteFrequencyData(eqData);
                 ctx.clearRect(0, 0, w, h);
                 var bars = eqData.length;
