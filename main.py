@@ -47,6 +47,8 @@ _lang_cache = {}
 module_order_cfg = dict(config['module_order']) if 'module_order' in config else {}
 MODULE_ORDER = [m.strip() for m in module_order_cfg.get('order', '').split(',') if m.strip()]
 
+load_log_enabled()
+
 autostart_cfg = dict(config['modules_auto_start']) if 'modules_auto_start' in config else {}
 AUTOSTART_USUAL = autostart_cfg.get('usual', 'all')
 AUTOSTART_SERVICE = autostart_cfg.get('service', 'all')
@@ -239,6 +241,25 @@ def discover_modules():
 module_log_enabled = {}
 
 
+def load_log_enabled():
+    """Load log enabled states from config.cfg"""
+    cfg = load_config()
+    if cfg.has_section('log_enabled'):
+        for name, val in cfg['log_enabled'].items():
+            module_log_enabled[name] = val.lower() == 'true'
+
+
+def save_log_enabled():
+    """Save log enabled states to config.cfg"""
+    cfg = load_config()
+    if not cfg.has_section('log_enabled'):
+        cfg.add_section('log_enabled')
+    for name, enabled in module_log_enabled.items():
+        cfg.set('log_enabled', name, str(enabled).lower())
+    with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
+        cfg.write(f)
+
+
 def start_module(manifest):
     name = manifest['name']
     if name in module_processes and module_processes[name].poll() is None:
@@ -422,6 +443,7 @@ def api_module_log(name):
     data = request.get_json()
     enabled = data.get('enabled', False)
     module_log_enabled[name] = enabled
+    save_log_enabled()
     stop_module(name)
     time.sleep(1)
     modules = discover_modules()
