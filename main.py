@@ -1,4 +1,4 @@
-import os
+﻿import os
 import sys
 import json
 import time
@@ -428,55 +428,6 @@ def api_module_restart(name):
     return jsonify({'error': 'Failed to restart'}), 500
 
 
-@app.route('/api/module/<name>/restart-elevated', methods=['POST'])
-@login_required
-def api_module_restart_elevated(name):
-    # Логируем попытку
-    log_path = os.path.join(DATA_DIR, 'log_file.log')
-    try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            separator = '\n' + '=' * 60 + '\n'
-            f.write(separator)
-            f.write(f'{datetime.now()} [INFO] RESTART-ELEVATED requested for {name}\n')
-    except Exception:
-        pass
-
-    # Останавливаем модуль
-    stop_module(name)
-    time.sleep(3)  # Ждём полного завершения старого процесса
-
-    modules = discover_modules()
-    manifest = next((m for m in modules if m['name'] == name), None)
-    if not manifest:
-        return jsonify({'error': 'Module not found'}), 404
-
-    # Проверяем права администратора
-    import ctypes
-    is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-
-    if not is_admin:
-        try:
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [ERROR] Shell is not admin, cannot elevate\n')
-        except Exception:
-            pass
-        return jsonify({'error': 'Shell is not running as Administrator. Restart Shell with admin rights.'}), 400
-
-    # Проверяем свободен порт
-    mod_path = manifest['_path']
-    main_py = os.path.join(mod_path, 'main.py')
-    port = module_ports.get(name, manifest.get('current_port', 5000))
-
-    # Ждём полного освобождения порта
-    for i in range(10):
-        if is_port_free(port):
-            break
-        try:
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [WARN] Port {port} still occupied (attempt {i+1}/10)...\n')
-        except Exception:
-            pass
-        time.sleep(1)
     else:
         return jsonify({'error': f'Port {port} is still in use after 10 seconds.'}), 500
 
@@ -743,15 +694,6 @@ def api_module_log_file(name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/admin-status')
-def api_admin_status():
-    try:
-        import ctypes
-        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        is_admin = False
-    return jsonify({'is_admin': is_admin})
-
 
 @app.route('/_images/<path:filename>')
 def serve_image(filename):
@@ -838,8 +780,6 @@ SHELL_TEMPLATE = r"""
         .btn-danger { background:#4d1a1a; color:#ff6c59; border-color:#ff6c59; }
         .btn-danger:hover { background:#ff6c59; color:#fff; }
         .btn-sm { padding:3px 8px; font-size:11px; }
-        .btn-admin { background:none; border:1px solid #ff9800; color:#ff9800; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
-        .btn-admin:hover { background:#ff9800; color:#fff; }
 
         .workspace { display:flex; flex:1; overflow:hidden; }
 
@@ -914,8 +854,6 @@ SHELL_TEMPLATE = r"""
                 <span id="module-name"></span>
                 <span class="port" id="module-port"></span>
                 {% if environment == 'development' %}<span id="module-info" style="font-size:13px;color:#999;margin-left:12px;"></span>{% endif %}
-                <span id="adminStatus" style="font-size:12px;margin-left:12px;"></span>
-                <button id="restartAdminBtn" class="btn btn-sm btn-admin" onclick="restartElevated()" style="display:none;margin-left:8px;">Restart as Admin</button>
                 <button class="btn btn-sm btn-default" onclick="restartModule()">Restart</button>
                 {% if environment == 'development' %}
                 <a id="module-web-link" href="#" target="_blank" class="btn btn-sm btn-default" style="text-decoration:none;display:none;">Web</a>
@@ -1040,15 +978,6 @@ SHELL_TEMPLATE = r"""
                 // Development Block — блок разработчика
                 document.getElementById('module-name').innerHTML = '<img src="/_images/developer_board.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Development';
                 document.getElementById('module-port').textContent = ':' + mod.port;
-                // Admin badge + Restart as Admin button
-                const adminEl = document.getElementById('adminStatus');
-                const adminBtn = document.getElementById('restartAdminBtn');
-                if (mod.requires_admin) {
-                    adminEl.innerHTML = '<span style="color:#ff9800;">Admin required</span>';
-                    adminBtn.style.display = 'inline-block';
-                } else {
-                    adminEl.innerHTML = '';
-                    adminBtn.style.display = 'none';
                 }
                 document.getElementById('module-frame').src = '/proxy/' + mod.port + '/';
                 document.getElementById('module-frame').style.display = 'block';
@@ -1058,8 +987,6 @@ SHELL_TEMPLATE = r"""
                 // Development Block — блок разработчика
                 document.getElementById('module-name').innerHTML = '<img src="/_images/developer_board.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Development';
                 document.getElementById('module-port').textContent = 'not running';
-                document.getElementById('adminStatus').innerHTML = '';
-                document.getElementById('restartAdminBtn').style.display = 'none';
                 document.getElementById('module-frame').style.display = 'none';
                 document.getElementById('placeholder').style.display = 'flex';
                 document.getElementById('placeholder').innerHTML = '<div style="text-align:center;"><div style="margin-bottom:12px;">Module not running</div><button class="btn btn-primary" onclick="startModule(\'' + name + '\')">Start Module</button></div>';
@@ -1286,10 +1213,6 @@ SHELL_TEMPLATE = r"""
         setInterval(updateClock, 60000);
         setInterval(loadModules, 10000);
 
-        function restartElevated() {
-            if (!currentModule) return;
-            window.parent.postMessage({action: 'restart-elevated', module: currentModule}, '*');
-        }
 
         async function openFolder() {
             if (!currentModule) return;
@@ -1329,14 +1252,6 @@ SHELL_TEMPLATE = r"""
                     document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Перезапуск Shell...</div>';
                     setTimeout(() => location.reload(), 5000);
                 } catch(e) {}
-            } else if (data && data.action === 'restart-elevated' && data.module) {
-                try {
-                    const r = await fetch('/api/module/' + data.module + '/restart-elevated', { method: 'POST' });
-                    const d = await r.json();
-                    if (d.status === 'elevated') {
-                        setTimeout(() => selectModule(data.module), 2000);
-                        loadModules();
-                    } else {
                         alert('Error: ' + (d.error || 'Failed to elevate'));
                     }
                 } catch(e) { alert('Error: ' + e.message); }
