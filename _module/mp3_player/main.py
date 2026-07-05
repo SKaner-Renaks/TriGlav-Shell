@@ -7,13 +7,15 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.6'
+VERSION = '1.0.7'
 
 app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MUSIC_DIR = os.path.join(BASE_DIR, 'music')
 PLAYLISTS_DIR = os.path.join(BASE_DIR, 'playlists')
+EQUALIZER_DIR = os.path.join(BASE_DIR, '_equalizer')
+MODULE_CONFIG_PATH = os.path.join(BASE_DIR, 'config.cfg')
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
 CONFIG_PATH = os.path.join(SHELL_DIR, '_data', 'config.cfg')
 
@@ -25,6 +27,13 @@ def get_theme():
     cfg = configparser.ConfigParser()
     cfg.read(CONFIG_PATH, encoding='utf-8')
     return cfg.get('shell', 'global_theme', fallback='dark')
+
+
+def get_module_config():
+    cfg = configparser.ConfigParser()
+    if os.path.exists(MODULE_CONFIG_PATH):
+        cfg.read(MODULE_CONFIG_PATH, encoding='utf-8')
+    return cfg
 
 
 def scan_music():
@@ -68,7 +77,11 @@ def read_tags(filepath):
 @app.route('/')
 def index():
     theme = get_theme()
-    return render_template_string(PLAYER_TEMPLATE, version=VERSION, theme=theme)
+    mc = get_module_config()
+    return render_template_string(PLAYER_TEMPLATE, version=VERSION, theme=theme,
+                                  blur=mc.getint('player', 'blur', fallback=13),
+                                  volume=mc.getint('player', 'volume', fallback=80),
+                                  equalizer=mc.get('player', 'equalizer', fallback='bars_gradient'))
 
 
 @app.route('/api/tracks')
@@ -148,6 +161,31 @@ def api_playlist_delete(name):
         os.remove(path)
         return jsonify({'status': 'deleted'})
     return jsonify({'error': 'Not found'}), 404
+
+
+@app.route('/api/settings')
+def api_settings():
+    mc = get_module_config()
+    return jsonify({
+        'blur': mc.getint('player', 'blur', fallback=13),
+        'volume': mc.getint('player', 'volume', fallback=80),
+        'equalizer': mc.get('player', 'equalizer', fallback='bars_gradient'),
+    })
+
+
+@app.route('/api/equalizers')
+def api_equalizers():
+    eqs = []
+    if os.path.isdir(EQUALIZER_DIR):
+        for f in sorted(os.listdir(EQUALIZER_DIR)):
+            if f.endswith('.js'):
+                eqs.append(f[:-3])
+    return jsonify(eqs)
+
+
+@app.route('/_equalizer/<name>.js')
+def serve_equalizer(name):
+    return send_from_directory(EQUALIZER_DIR, name + '.js', mimetype='application/javascript')
 
 
 PLAYER_TEMPLATE = r"""
@@ -342,7 +380,7 @@ PLAYER_TEMPLATE = r"""
             width: 120%; height: 120%;
             background-size: cover;
             background-position: center;
-            filter: blur(13px) brightness(0.3);
+            filter: blur({{ blur }}px) brightness(0.3);
             z-index: 1;
             transition: background-image 0.5s ease;
         }
@@ -536,17 +574,21 @@ PLAYER_TEMPLATE = r"""
     <div class="header">
         <h1>MP3 Player {{ version }}</h1>
         <div class="header-controls">
+            <div class="vol-wrap">
+                <label>EQ</label>
+                <select id="eqSelect" onchange="switchEqualizer(this.value)" style="background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:3px;padding:3px 6px;font-size:11px;font-family:inherit;"></select>
+            </div>
             <!-- BLUR SLIDER — удалить в следующей версии -->
             <div class="vol-wrap">
                 <label>Blur</label>
-                <span id="blurVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">13</span>
-                <input type="range" id="blurSlider" min="0" max="100" value="13" oninput="updateBlur(this.value)">
+                <span id="blurVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">{{ blur }}</span>
+                <input type="range" id="blurSlider" min="0" max="100" value="{{ blur }}" oninput="updateBlur(this.value)">
             </div>
             <!-- END BLUR SLIDER -->
             <div class="vol-wrap">
                 <label>Vol</label>
-                <span id="volVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">80</span>
-                <input type="range" id="volume" min="0" max="100" value="80" oninput="setVolume(this.value)">
+                <span id="volVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">{{ volume }}</span>
+                <input type="range" id="volume" min="0" max="100" value="{{ volume }}" oninput="setVolume(this.value)">
             </div>
         </div>
     </div>
@@ -615,6 +657,8 @@ PLAYER_TEMPLATE = r"""
         var audioCtx, analyser, source, gainNode;
         var eqInited = false;
         var eqData = new Uint8Array(64);
+        var currentEQ = null;
+        var currentEQName = '{{ equalizer }}';
 
         var SVG_PLAY = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="m401.46-341.54 217-138.46-217-138.46v276.92ZM480.13-120q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg>';
         var SVG_PAUSE = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M396.92-340h30.77v-280h-30.77v280Zm135.39 0h30.77v-280h-30.77v280Zm-52.18 220q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg>';
@@ -627,7 +671,38 @@ PLAYER_TEMPLATE = r"""
         function init() {
             loadTracks();
             loadPlaylists();
+            loadEqualizers();
             initEQ();
+        }
+
+        function loadEqualizers() {
+            fetch('/api/equalizers')
+                .then(function(r){ return r.json(); })
+                .then(function(list){
+                    var sel = document.getElementById('eqSelect');
+                    sel.innerHTML = '';
+                    list.forEach(function(name){
+                        var opt = document.createElement('option');
+                        opt.value = name;
+                        opt.textContent = name;
+                        if (name === currentEQName) opt.selected = true;
+                        sel.appendChild(opt);
+                    });
+                    switchEqualizer(currentEQName);
+                });
+        }
+
+        function switchEqualizer(name) {
+            currentEQName = name;
+            var script = document.getElementById('eqScript');
+            if (script) script.remove();
+            script = document.createElement('script');
+            script.id = 'eqScript';
+            script.src = '/_equalizer/' + encodeURIComponent(name) + '.js';
+            script.onload = function(){
+                if (typeof draw === 'function') currentEQ = draw;
+            };
+            document.head.appendChild(script);
         }
 
         /* AUDIO CONTEXT & EQ */
@@ -660,7 +735,7 @@ PLAYER_TEMPLATE = r"""
 
             function frame() {
                 requestAnimationFrame(frame);
-                if (!analyser) return;
+                if (!analyser || !currentEQ) return;
                 var w = canvas.parentElement.clientWidth;
                 var h = canvas.parentElement.clientHeight;
                 if (canvas.width !== w || canvas.height !== h) {
@@ -668,21 +743,8 @@ PLAYER_TEMPLATE = r"""
                     canvas.height = h;
                 }
                 analyser.getByteFrequencyData(eqData);
-                ctx.clearRect(0, 0, w, h);
-                var bars = eqData.length;
-                var barW = (w / bars) * 1.2;
-                var gap = 2;
-                for (var i = 0; i < bars; i++) {
-                    var val = eqData[i] / 255;
-                    var barH = val * h * 0.9;
-                    var x = i * (barW + gap);
-                    var g = ctx.createLinearGradient(0, h, 0, 0);
-                    g.addColorStop(0, '#21bf4b');
-                    g.addColorStop(0.5, '#f0c040');
-                    g.addColorStop(1, '#ff6c59');
-                    ctx.fillStyle = g;
-                    ctx.fillRect(x, h - barH, barW, barH);
-                }
+                var mode = document.getElementById('rightPanel').classList.contains('eq-mode') ? 'fullscreen' : 'normal';
+                currentEQ(ctx, new Uint8Array(eqData), w, h, mode);
             }
             frame();
         }
@@ -966,7 +1028,7 @@ PLAYER_TEMPLATE = r"""
         }
 
         /* START */
-        setVolume(80);
+        setVolume({{ volume }});
         init();
     </script>
 </body>

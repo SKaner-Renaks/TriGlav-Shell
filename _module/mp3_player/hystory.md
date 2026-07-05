@@ -19,4 +19,42 @@
 - Увеличены иконки управления в 2 раза (56px ctrl, 40px mode)
 - Убран синий круг под кнопкой play
 - Кнопка play и другие иконки меняют цвет на accent при активации
-- Glow-эффект (drop-shadow) на активных кнопках
+- Inline SVG вместо <img> — фикс broken image при переключении
+- Proxy маршрут /module-music/<name>/<path> для MP3 через Shell
+- Proxy маршрут /module-cover/<name>/<path> для обложек через Shell
+- Fallback обложки: onerror показывает default_cover.png
+- Кнопка обновления списка треков (refresh)
+- Одиночный/двойной клик по трекам (выбор/воспроизведение)
+
+## v1.0.2
+- Обложка альбома в центре right panel (cover-wrap 240x240)
+- Размытый фон (bg-blur, blur 13px, brightness 0.3)
+- Glassmorphic стиль с text-shadow
+- Ползунок blur с числовым отображением
+- default_cover.png — обложка по умолчанию (дракон из cover_6.png)
+- Кнопка эквалайзера (EQ режим) — полноразмерный EQ как фон
+- CSS: .right.eq-mode — blur/cover скрыты, eq-wrap на весь экран
+- EQ canvas пересчёт размеров каждый кадр (фикс размытия)
+
+## v1.0.3
+- Числовое отображение громкости (volVal span)
+
+## v1.0.4
+- Обложки в списке треков (мини 36x36 слева в плашке)
+- Placeholder поиска: "Поиск по названию или исполнителю..."
+
+## v1.0.5
+- Blur default: 40px → 13px (CSS + slider)
+- Layout ползунков: число перед ползунком (label → span → input)
+
+## v1.0.6
+- Кнопка эквалайзера (equalizer.svg inline)
+- EQ режим: bg-blur/cover скрыты, eq-wrap растягивается на весь экран
+
+## v1.0.7
+- Модульные эквалайзеры: _equalizer/ папка с JS-скриптами
+- Выпадающий список эквалайзеров в headbar
+- config.cfg модуля: blur, volume, equalizer по умолчанию
+- bars_gradient.js — вынесен из main.py как первый эквалайзер
+- AGENTS.md для эквалайзеров (правила создания)
+- API: /api/settings, /api/equalizers, /_equalizer/<name>.js
