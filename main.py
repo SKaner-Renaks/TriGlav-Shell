@@ -605,6 +605,26 @@ def proxy_module_cover(name, filepath):
         return jsonify({'error': str(e)}), 502
 
 
+@app.route('/module-equalizer/<name>/<path:filepath>')
+def proxy_module_equalizer(name, filepath):
+    modules = discover_modules()
+    manifest = next((m for m in modules if m['name'] == name), None)
+    if not manifest:
+        return jsonify({'error': 'Module not found'}), 404
+    port = module_ports.get(name, manifest.get('current_port', 0))
+    if not port:
+        return jsonify({'error': 'Module not running'}), 502
+    url = f'http://127.0.0.1:{port}/_equalizer/{filepath}'
+    try:
+        noproxy = {'http': None, 'https': None}
+        resp = req_lib.get(url, timeout=30, proxies=noproxy)
+        excluded = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+        headers = [(k, v) for k, v in resp.headers.items() if k.lower() not in excluded]
+        return resp.content, resp.status_code, headers
+    except Exception as e:
+        return jsonify({'error': str(e)}), 502
+
+
 @app.route('/proxy/<int:port>/', defaults={'path': ''}, methods=['GET', 'POST'])
 @app.route('/proxy/<int:port>/<path:path>', methods=['GET', 'POST'])
 def proxy(port, path):

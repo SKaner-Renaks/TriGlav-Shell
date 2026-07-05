@@ -699,7 +699,7 @@ PLAYER_TEMPLATE = r"""
             if (old) old.remove();
             var s = document.createElement('script');
             s.id = 'eqScript';
-            s.src = '/_equalizer/' + encodeURIComponent(name) + '.js';
+            s.src = '/module-equalizer/mp3_player/' + encodeURIComponent(name) + '.js';
             s.onload = function() {
                 if (typeof window.draw === 'function') currentEQ = window.draw;
             };
