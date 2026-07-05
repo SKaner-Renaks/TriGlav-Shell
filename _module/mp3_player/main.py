@@ -501,11 +501,11 @@ PLAYER_TEMPLATE = r"""
             cursor: pointer;
             padding: 2px;
             display: flex;
-            color: var(--muted);
+            color: var(--muted) !important;
             transition: color 0.15s;
         }
-        .refresh-btn:hover { color: var(--text); }
-        .refresh-btn.spinning { color: var(--accent); animation: spinOnce 0.6s ease; }
+        .refresh-btn:hover { color: var(--text) !important; }
+        .refresh-btn.spinning { color: var(--accent) !important; animation: spinOnce 0.6s ease; }
         @keyframes spinOnce { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
         .empty-msg { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
