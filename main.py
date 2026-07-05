@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import time
@@ -428,37 +428,6 @@ def api_module_restart(name):
     return jsonify({'error': 'Failed to restart'}), 500
 
 
-    else:
-        return jsonify({'error': f'Port {port} is still in use after 10 seconds.'}), 500
-
-    # Запуск с правами администратора
-    try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(f'{datetime.now()} [INFO] Starting elevated process on port {port}\n')
-        ctypes.windll.shell32.ShellExecuteW(None, 'runas', sys.executable, f'"{main_py}" --host 0.0.0.0 --port {port}', mod_path, 1)
-        # Ждём пока порт будет занят
-        for i in range(15):
-            time.sleep(1)
-            if not is_port_free(port):
-                try:
-                    with open(log_path, 'a', encoding='utf-8') as f:
-                        f.write(f'{datetime.now()} [INFO] Port {port} is now occupied - module running\n')
-                except Exception:
-                    pass
-                return jsonify({'status': 'elevated', 'port': port})
-        try:
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [WARN] Port {port} not occupied after 15s, module may have failed\n')
-        except Exception:
-            pass
-        return jsonify({'status': 'elevated', 'port': port})
-    except Exception as e:
-        try:
-            with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [ERROR] Failed to elevate: {str(e)}\n')
-        except Exception:
-            pass
-        return jsonify({'error': f'Failed to elevate: {str(e)}'}), 500
 
 
 @app.route('/api/module/<name>/log', methods=['POST'])
