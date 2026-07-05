@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 
 app = Flask(__name__)
 
@@ -521,6 +521,12 @@ PLAYER_TEMPLATE = r"""
     <div class="header">
         <h1>MP3 Player {{ version }}</h1>
         <div class="header-controls">
+            <!-- BLUR SLIDER — удалить в следующей версии -->
+            <div class="vol-wrap">
+                <label>Blur</label>
+                <input type="range" id="blurSlider" min="0" max="100" value="40" oninput="updateBlur(this.value)">
+            </div>
+            <!-- END BLUR SLIDER -->
             <div class="vol-wrap">
                 <label>Vol</label>
                 <input type="range" id="volume" min="0" max="100" value="80" oninput="setVolume(this.value)">
@@ -826,6 +832,15 @@ PLAYER_TEMPLATE = r"""
             var pct = (e.clientX - rect.left) / rect.width;
             audio.currentTime = pct * audio.duration;
         }
+
+        // BLUR SLIDER — удалить в следующей версии
+        function updateBlur(val) {
+            var bgEl = document.getElementById('bgBlur');
+            if (bgEl) {
+                bgEl.style.filter = "blur(" + val + "px) brightness(0.3)";
+            }
+        }
+        // END BLUR SLIDER
 
         function setVolume(val) {
             audio.volume = val / 100;
