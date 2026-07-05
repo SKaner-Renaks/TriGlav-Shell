@@ -9,7 +9,7 @@
 - **ОС**: Windows 10/11, Windows Server 2016+ (Linux НЕ поддерживается)
 - **Git**: `C:\Program Files\Git\cmd\git.exe` (v2.54.0)
 - **GitHub**: репозиторий `https://github.com/SKaner-Renaks/TriGlav-Shell`
-- **Зеркало**: `C:\ars\mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ars\mimo\Task Server`
+- **Зеркало**: `C:\ARS\Mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ARS\Mimo\Task Server`
 - **Синхронизация**: копировать файлы в зеркало → `git add . && git commit && git push`
 - **Файлы для синхронизации**: `main.py`, `AGENTS.md`, `requirements.txt`, `task.md`, `task_updater.md`, `_data/`, `_module/`
 - **Исключается**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`
@@ -32,7 +32,7 @@ Start-Process python -ArgumentList '"main.py"' -Verb RunAs
 Shell (Flask, port 8080) управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell           (port 8080)   VERSION = '1.2.7'
+main.py              Ядро Shell           (port 8080)   VERSION = '1.3.9'
 _data/
   config.cfg         Глобальные настройки (INI)
   manifest.json      Манифест Shell
@@ -40,16 +40,17 @@ _data/
   care.env           Хранилище секретов (auto-created)
   _lang/             Локализация (ru.json, en.json)
   _ps/               PowerShell скрипты Shell
-  _images/           SVG-иконки
+  _images/           SVG-иконки (gear, developer_board)
 _module/             Автообнаружение модулей
-  monitor/           Мониторинг сервера  (port 5001)   v1.5     type=usual
-  task_scheduler/    Планировщик задач   (port 5002)   v2.4.5   type=usual
-  control/           Панель управления   (port 5004)   v1.4     type=usual
-  invaders/          Космические захватчики (port 5005) v1.2    type=game
-  snake/             Змейка              (port 5006)   v1.2     type=game
-  _deps_checker/     Проверка зависимостей (port 5007) v1.2.2  type=service
-  _module_manager/   Управление модулями (port 5008)   v1.2.1  type=service
-  _updater/          Обновления из GitHub (port 5009)  v1.4.1  type=service
+  monitor/           Мониторинг сервера  (port 5005)   v1.5     type=usual
+  task_scheduler/    Планировщик задач   (port 5008)   v2.4.5   type=usual
+  control/           Панель управления   (port 5003)   v1.4     type=usual
+  invaders/          Космические захватчики (port 5004) v1.2    type=game
+  snake/             Змейка              (port 5007)   v1.2     type=game
+  smb_explorer/      SMB Explorer        (port 5006)   v3.2     type=usual
+  _deps_checker/     Проверка зависимостей (port 5000) v1.2.2  type=service
+  _module_manager/   Управление модулями (port 5001)   v1.3.4  type=service (requires_admin)
+  _updater/          Обновления из GitHub (port 5002)  v1.4.1  type=service
 ```
 
 ## Типы модулей
@@ -98,6 +99,7 @@ _module/[name]/
 3. Тема: Proxmox-style dark (#1a1a1a, #262626, #47a8ff)
 4. `requirements.txt` с зависимостиями (обычно `flask>=3.0`)
 5. Версия в заголовке скрипта: `VERSION = 'x.y.z'`
+6. **manifest.json БЕЗ BOM** — PowerShell `Set-Content -Encoding UTF8` добавляет BOM, который ломает `json.load()`. Использовать Python для записи манифестов.
 
 ## Ключевые особенности
 
@@ -106,16 +108,24 @@ _module/[name]/
 - **Production**: модули на `127.0.0.1`, доступ только через Shell proxy
 - **Development**: модули на `0.0.0.0`, доступны напрямую + логирование
 
+### Development Block
+
+Блок информации о модуле в content header называется **Development Block** — блок разработчика. Показывает иконку `developer_board.svg` + "Development". Отображает порт модуля, кнопки управления (Restart, Web, Folder, Log). Доступен только в Development mode.
+
 ### Reverse Proxy
 
-Shell проксирует HTML-ответы модулей, перезаписывая относительные URL для маршрутизации через `/proxy/<port>/`. Модули не должны использовать绝对ные пути в `fetch()`, `src=`, `href=`.
+Shell проксирует HTML-ответы модулей, перезаписывая относительные URL для маршрутизации через `/proxy/<port>/`. Модули не должны использовать абсолютные пути в `fetch()`, `src=`, `href=`.
+
+### Proxy bypass
+
+Системный прокси Windows (`ProxyServer=http://127.0.0.1:12334`) перехватывает запросы `requests`. В `proxy()` функции добавлен `proxies={'http': None, 'https': None}` для обхода прокси при запросах к модулям.
 
 ### Автозапуск (config.cfg)
 
 ```ini
 [modules_auto_start]
 usual = all                    # или: monitor,control,task_scheduler
-service = all                  # или: deps_checker
+service = all                  # или: deps_checker,module_manager,updater
 game = all                     # или: snake,invaders
 ```
 
@@ -123,10 +133,22 @@ game = all                     # или: snake,invaders
 
 - Production: Shell сканирует свободные порты, начиная с 5000. `current_port` в manifest.json перезаписывается.
 - Development: порты из manifest.json используются как есть.
+- Shell проверяет: если `current_port` пустой или `0` — генерирует порт через `5000 + hash(name) % 100`.
 
 ### Логирование
 
 Только в Development mode. Включается чекбоксом Log в content header. Модуль перезапускается с флагом `--log`, пишет в `module.log` в своей папке.
+
+### module_manager
+
+- Сервисный модуль с `requires_admin: true`
+- Показывает порты и статус запуска всех модулей (запрашивает Shell API)
+- Кнопка **Restart** для каждого модуля (блокируется при включённой блокировке для сервисных)
+- Кнопка **Remove** с модальным подтверждением для сервисных модулей
+- Проверка прав администратора (`/api/admin-status`)
+- Кнопка **Restart as Admin** в хедере для модулей с `requires_admin`
+- Колонка **Версия** в таблицах модулей
+- **Стили disabled**: `opacity:0.3; cursor:not-allowed; border-color:#666; color:#666`
 
 ## Gotchas
 
@@ -139,6 +161,8 @@ game = all                     # или: snake,invaders
 - **PS1-скрипты**: Shell-скрипты в `_data/_ps/`, модульные — в папках модулей.
 - **config.cfg**: хранится в `_data/config.cfg`. Модули **не** импортируют общий конфиг.
 - **encrypt.py**: только XOR+base64. care.env auto-created с дефолтами admin/admin.
+- **Manifest BOM**: PowerShell `Set-Content -Encoding UTF8` добавляет BOM. Использовать Python или `System.Text.UTF8Encoding $false` для записи JSON без BOM.
+- **Folder button**: `ShellExecuteW` с `SW_SHOWNORMAL` не гарантирует foreground. Использовать `EnumWindows` + `SetForegroundWindow` + `BringWindowToTop`.
 
 ## Code Conventions
 
@@ -149,3 +173,4 @@ game = all                     # или: snake,invaders
 - Бекапы: `BackUp/YYYYMMDD-N/`
 - Локализация: fallback ru → en → raw keys
 - Каждый модуль и Shell имеют свой `requirements.txt`
+- Манифесты писать через Python `json.dump()` — без BOM, с `ensure_ascii=False`
