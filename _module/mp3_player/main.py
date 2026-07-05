@@ -751,7 +751,9 @@ PLAYER_TEMPLATE = r"""
             if (t.has_cover) {
                 coverUrl = '/module-cover/mp3_player/' + encodeURIComponent(t.file);
             }
-            document.getElementById('npCover').src = coverUrl;
+            var coverEl = document.getElementById('npCover');
+            coverEl.onerror = function(){ this.src = '/_images/default_cover.png'; this.onerror = null; };
+            coverEl.src = coverUrl;
             document.getElementById('bgBlur').style.backgroundImage = "url('" + coverUrl + "')";
 
             renderTracks();
