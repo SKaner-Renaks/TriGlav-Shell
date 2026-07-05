@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.2'
+VERSION = '1.0.3'
 
 app = Flask(__name__)
 
@@ -531,6 +531,7 @@ PLAYER_TEMPLATE = r"""
             <div class="vol-wrap">
                 <label>Vol</label>
                 <input type="range" id="volume" min="0" max="100" value="80" oninput="setVolume(this.value)">
+                <span id="volVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">80</span>
             </div>
         </div>
     </div>
@@ -847,6 +848,7 @@ PLAYER_TEMPLATE = r"""
         function setVolume(val) {
             audio.volume = val / 100;
             if (gainNode) gainNode.gain.value = val / 100;
+            document.getElementById('volVal').textContent = val;
         }
 
         /* MODES */
