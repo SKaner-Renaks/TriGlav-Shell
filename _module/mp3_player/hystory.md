@@ -12,4 +12,5 @@
 - Плейлисты: создание, сохранение, удаление (JSON в playlists/)
 - Поиск по трекам
 - Поддержка dark/light темы из config.cfg
+- SVG-иконки для управления (play, pause, skip, shuffle, repeat, volume)
 - Порт 5009, тип game
