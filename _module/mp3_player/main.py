@@ -525,6 +525,7 @@ PLAYER_TEMPLATE = r"""
             <div class="vol-wrap">
                 <label>Blur</label>
                 <input type="range" id="blurSlider" min="0" max="100" value="40" oninput="updateBlur(this.value)">
+                <span id="blurVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">40</span>
             </div>
             <!-- END BLUR SLIDER -->
             <div class="vol-wrap">
@@ -839,6 +840,7 @@ PLAYER_TEMPLATE = r"""
             if (bgEl) {
                 bgEl.style.filter = "blur(" + val + "px) brightness(0.3)";
             }
+            document.getElementById('blurVal').textContent = val;
         }
         // END BLUR SLIDER
 
