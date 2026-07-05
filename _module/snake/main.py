@@ -473,7 +473,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.log:
-        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log_file.log')
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s [%(levelname)s] %(message)s')
         logging.info('Snake %s started', VERSION)
