@@ -543,7 +543,7 @@ PLAYER_TEMPLATE = r"""
         <div class="right">
             <div class="bg-blur" id="bgBlur"></div>
             <div class="cover-wrap">
-                <img id="npCover" src="/_images/default_cover.svg" alt="Cover">
+                <img id="npCover" src="/_images/default_cover.png" alt="Cover">
             </div>
             <div class="np-info">
                 <div class="np-title" id="npTitle">—</div>
@@ -747,7 +747,7 @@ PLAYER_TEMPLATE = r"""
             document.getElementById('npFile').textContent = t.file;
             document.getElementById('totTime').textContent = fmtTime(t.duration);
 
-            var coverUrl = '/_images/default_cover.svg';
+            var coverUrl = '/_images/default_cover.png';
             if (t.has_cover) {
                 coverUrl = '/module-cover/mp3_player/' + encodeURIComponent(t.file);
             }
