@@ -431,7 +431,20 @@ def api_module_restart(name):
 @app.route('/api/module/<name>/restart-elevated', methods=['POST'])
 @login_required
 def api_module_restart_elevated(name):
+    # Логируем попытку
+    log_path = os.path.join(DATA_DIR, 'log_file.log')
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            separator = '\n' + '=' * 60 + '\n'
+            f.write(separator)
+            f.write(f'{datetime.now()} [INFO] RESTART-ELEVATED requested for {name}\n')
+    except Exception:
+        pass
+
+    # Останавливаем модуль
     stop_module(name)
+    time.sleep(3)  # Ждём полного завершения старого процесса
+
     modules = discover_modules()
     manifest = next((m for m in modules if m['name'] == name), None)
     if not manifest:
@@ -441,30 +454,45 @@ def api_module_restart_elevated(name):
     import ctypes
     is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
 
-    log_path = os.path.join(DATA_DIR, 'log_file.log')
-    try:
-        with open(log_path, 'a', encoding='utf-8') as f:
-            separator = '\n' + '=' * 60 + '\n'
-            f.write(separator)
-            f.write(f'{datetime.now()} [INFO] RESTART-ELEVATED: {name} (admin={is_admin})\n')
-            f.write(separator)
-    except Exception:
-        pass
-
     if not is_admin:
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(f'{datetime.now()} [ERROR] Shell is not admin, cannot elevate\n')
+        except Exception:
+            pass
         return jsonify({'error': 'Shell is not running as Administrator. Restart Shell with admin rights.'}), 400
 
-    # Перезапуск модуля с правами администратора
+    # Проверяем свободен порт
     mod_path = manifest['_path']
     main_py = os.path.join(mod_path, 'main.py')
     port = module_ports.get(name, manifest.get('current_port', 5000))
 
-    try:
-        cmd = f'"{sys.executable}" "{main_py}" --host 0.0.0.0 --port {port}'
-        ctypes.windll.shell32.ShellExecuteW(None, 'runas', sys.executable, f'"{main_py}" --host 0.0.0.0 --port {port}', mod_path, 1)
+    if not is_port_free(port):
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(f'{datetime.now()} [WARN] Port {port} still occupied, waiting...\n')
+        except Exception:
+            pass
         time.sleep(2)
+        if not is_port_free(port):
+            return jsonify({'error': f'Port {port} is still in use. Try again later.'}), 500
+
+    # Запуск с правами администратора
+    try:
+        ctypes.windll.shell32.ShellExecuteW(None, 'runas', sys.executable, f'"{main_py}" --host 0.0.0.0 --port {port}', mod_path, 1)
+        time.sleep(3)
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(f'{datetime.now()} [INFO] Elevated process started on port {port}\n')
+        except Exception:
+            pass
         return jsonify({'status': 'elevated', 'port': port})
     except Exception as e:
+        try:
+            with open(log_path, 'a', encoding='utf-8') as f:
+                f.write(f'{datetime.now()} [ERROR] Failed to elevate: {str(e)}\n')
+        except Exception:
+            pass
         return jsonify({'error': f'Failed to elevate: {str(e)}'}), 500
 
 

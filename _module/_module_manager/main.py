@@ -9,9 +9,15 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.5'
+VERSION = '1.3.8'
 
 app = Flask(__name__)
+
+
+@app.before_request
+def log_request():
+    import logging
+    logging.info("%s %s", request.method, request.path)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
