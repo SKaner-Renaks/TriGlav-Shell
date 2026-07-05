@@ -14,6 +14,7 @@
 - **invaders**: v1.2
 - **snake**: v1.2
 - **flip_clock**: v1.1
+- **mp3_player**: v1.0
 - **smb_explorer**: v3.2
 - **deps_checker**: v1.2.2
 - **updater**: v1.4.1
@@ -52,6 +53,7 @@ C:\ARS\Mimo\Task Server\
     ├── invaders\        Космические захватчики (port 5004) v1.2
     ├── snake\           Змейка (port 5007) v1.2
     ├── flip_clock\      Flip Clock (port 5042) v1.1
+    ├── mp3_player\      MP3 Player (port 5009) v1.0
     ├── smb_explorer\    SMB Explorer (port 5006) v3.2
     ├── _deps_checker\   Проверка зависимостей (port 5000) v1.2.2
     ├── _module_manager\ Управление модулями (port 5001) v1.3.8

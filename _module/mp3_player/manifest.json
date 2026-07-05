@@ -1,0 +1,15 @@
+{
+  "name": "mp3_player",
+  "title": "MP3 Player",
+  "version": "1.0",
+  "description": "Музыкальный плеер с эквалайзером и плейлистами",
+  "type": "game",
+  "requires_admin": false,
+  "current_port": 5009,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "current_settings": {},
+  "default_settings": {}
+}
