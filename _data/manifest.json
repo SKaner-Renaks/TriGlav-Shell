@@ -1,7 +1,7 @@
 {
     "name":  "shell",
     "title":  "TriGlav Shell",
-    "version":  "1.4.0",
+    "version":  "1.4.1",
     "description":  "РЈРїСЂР°РІР»СЏСЋС‰Р°СЏ РІРµР±-РѕР±РѕР»РѕС‡РєР° РґР»СЏ РјРѕРґСѓР»РµР№ Р°РІС‚РѕРјР°С‚РёР·Р°С†РёРё",
     "type":  "shell",
     "requires_admin":  false,

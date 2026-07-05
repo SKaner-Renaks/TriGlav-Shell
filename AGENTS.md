@@ -163,6 +163,7 @@ game = all                     # или: snake,invaders
 - **encrypt.py**: только XOR+base64. care.env auto-created с дефолтами admin/admin.
 - **Manifest BOM**: PowerShell `Set-Content -Encoding UTF8` добавляет BOM. Использовать Python или `System.Text.UTF8Encoding $false` для записи JSON без BOM.
 - **Folder button**: `ShellExecuteW` с `SW_SHOWNORMAL` не гарантирует foreground. Использовать `EnumWindows` + `SetForegroundWindow` + `BringWindowToTop`.
+- **Log file naming**: Лог-файл модуля = `<папка_модуля>/log_file.log`. Лог Shell = `_data/log_file.log`. Единое имя для всех.
 
 ## Code Conventions
 

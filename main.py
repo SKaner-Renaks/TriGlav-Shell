@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.4.0'
+VERSION = '1.4.1'
 
 app = Flask(__name__)
 
@@ -255,6 +255,8 @@ def start_module(manifest):
     cmd = [sys.executable, main_py, '--host', host, '--port', str(port)]
     if module_log_enabled.get(name):
         cmd.append('--log')
+        cmd.append('--log-file')
+        cmd.append(os.path.join(mod_path, 'log_file.log'))
     try:
         proc = subprocess.Popen(cmd, cwd=mod_path)
         module_processes[name] = proc
@@ -398,24 +400,18 @@ def api_module_restart(name):
 @login_required
 def api_module_restart_elevated(name):
     stop_module(name)
-    time.sleep(1)
     modules = discover_modules()
     manifest = next((m for m in modules if m['name'] == name), None)
     if not manifest:
         return jsonify({'error': 'Module not found'}), 404
-
-    mod_path = manifest['_path']
-    main_py = os.path.join(mod_path, 'main.py')
-    port = module_ports.get(name, manifest.get('current_port', 5000))
-
+    # Логируем попытку повышения прав
+    log_path = os.path.join(DATA_DIR, 'log_file.log')
     try:
-        import ctypes
-        cmd = f'"{sys.executable}" "{main_py}" --host 127.0.0.1 --port {port}'
-        ctypes.windll.shell32.ShellExecuteW(None, 'runas', sys.executable, f'"{main_py}" --host 127.0.0.1 --port {port}', mod_path, 1)
-        time.sleep(2)
-        return jsonify({'status': 'elevated', 'port': port})
-    except Exception as e:
-        return jsonify({'error': f'Failed to elevate: {str(e)}'}), 500
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'{datetime.now()} [INFO] Restart-elevated requested for {name}\n')
+    except Exception:
+        pass
+    return jsonify({'error': 'Restart as Admin requires Shell to be run as Administrator. Restart Shell with admin rights.'}), 400
 
 
 @app.route('/api/module/<name>/log', methods=['POST'])
@@ -637,7 +633,7 @@ def api_module_log_file(name):
     if ENVIRONMENT != 'development':
         return jsonify({'error': 'only in development mode'}), 400
     mod_path = os.path.join(MODULE_DIR, name)
-    log_path = os.path.join(mod_path, 'module.log')
+    log_path = os.path.join(mod_path, 'log_file.log')
     if not os.path.exists(log_path):
         return jsonify({'error': 'Log file not found', 'path': log_path}), 404
     try:
@@ -1313,6 +1309,17 @@ if __name__ == '__main__':
         time.sleep(0.5)
         if i < total:
             print()
+
+    # Логирование Shell
+    log_path = os.path.join(DATA_DIR, 'log_file.log')
+    try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'\n{datetime.now()} [INFO] Shell {VERSION} started\n')
+            f.write(f'{datetime.now()} [INFO] Environment: {ENVIRONMENT}\n')
+            f.write(f'{datetime.now()} [INFO] Port: {SHELL_PORT}\n')
+            f.write(f'{datetime.now()} [INFO] Modules: {len(to_start)}/{len(modules)}\n')
+    except Exception:
+        pass
 
     print("\n" + "=" * 50)
     print(f"  TriGlav Shell {VERSION}")
