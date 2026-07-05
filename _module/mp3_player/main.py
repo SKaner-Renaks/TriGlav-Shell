@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.3'
+VERSION = '1.0.4'
 
 app = Flask(__name__)
 
@@ -321,6 +321,7 @@ PLAYER_TEMPLATE = r"""
         .track-item.active .ti-artist { color: rgba(255,255,255,0.7); }
         .track-item .ti-dur { font-size: 11px; color: var(--muted); margin-left: 8px; flex-shrink: 0; }
         .track-item.active .ti-dur { color: rgba(255,255,255,0.7); }
+        .ti-cover { width: 36px; height: 36px; border-radius: 4px; object-fit: cover; margin-right: 10px; flex-shrink: 0; background: var(--border); }
 
         /* RIGHT PANEL */
         .right {
@@ -544,7 +545,7 @@ PLAYER_TEMPLATE = r"""
             </div>
             <div class="left-section" style="padding-top:0;">
                 <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button class="refresh-btn" id="refreshBtn" onclick="refreshTracks()" title="Обновить список"><svg viewBox="0 -960 960 960" fill="currentColor" width="18" height="18"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
-                <input class="search-box" id="searchBox" placeholder="Поиск..." oninput="filterTracks()">
+                <input class="search-box" id="searchBox" placeholder="Поиск по названию или исполнителю..." oninput="filterTracks()">
             </div>
             <div class="track-list" id="trackList"></div>
         </div>
@@ -700,7 +701,11 @@ PLAYER_TEMPLATE = r"""
                 var dur = fmtTime(t.duration);
                 var title = t.title || t.filename;
                 var cls = (i === currentIdx) ? ' active' : '';
+                var coverSrc = t.has_cover
+                    ? '/module-cover/mp3_player/' + encodeURIComponent(t.file)
+                    : '/_images/default_cover.png';
                 html += '<div class="track-item'+cls+'" data-idx="'+i+'" ondblclick="playTrack('+i+')" onclick="selectTrack(event,'+i+')">'
+                    + '<img class="ti-cover" src="'+coverSrc+'" onerror="this.src=\'/_images/default_cover.png\'">'
                     + '<div class="ti-info"><div class="ti-title">'+esc(title)+'</div>'
                     + '<div class="ti-artist">'+esc(t.artist||'—')+'</div></div>'
                     + '<div class="ti-dur">'+dur+'</div></div>';
