@@ -314,6 +314,7 @@ PLAYER_TEMPLATE = r"""
         }
         .track-item:hover { background: var(--hover); }
         .track-item.active { background: var(--accent); color: #fff; }
+        .track-item.selected { background: var(--hover); }
         .track-item .ti-info { flex: 1; min-width: 0; }
         .track-item .ti-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .track-item .ti-artist { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -465,6 +466,19 @@ PLAYER_TEMPLATE = r"""
         .modal-btns .btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
         .modal-btns button:hover { opacity: 0.85; }
 
+        .refresh-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 2px;
+            display: flex;
+            color: var(--muted);
+            transition: color 0.15s;
+        }
+        .refresh-btn:hover { color: var(--text); }
+        .refresh-btn.spinning { color: var(--accent); animation: spinOnce 0.6s ease; }
+        @keyframes spinOnce { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
         .empty-msg { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
 
         /* SCROLLBAR */
@@ -492,7 +506,7 @@ PLAYER_TEMPLATE = r"""
                 <ul class="pl-list" id="plList"></ul>
             </div>
             <div class="left-section" style="padding-top:0;">
-                <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button onclick="loadTracks()" title="Обновить список" style="background:none;border:none;cursor:pointer;padding:2px;display:flex;"><svg viewBox="0 -960 960 960" fill="currentColor" width="14" height="14"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
+                <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button class="refresh-btn" id="refreshBtn" onclick="refreshTracks()" title="Обновить список"><svg viewBox="0 -960 960 960" fill="currentColor" width="18" height="18"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
                 <input class="search-box" id="searchBox" placeholder="Поиск..." oninput="filterTracks()">
             </div>
             <div class="track-list" id="trackList"></div>
@@ -645,7 +659,7 @@ PLAYER_TEMPLATE = r"""
                 var dur = fmtTime(t.duration);
                 var title = t.title || t.filename;
                 var cls = (i === currentIdx) ? ' active' : '';
-                html += '<div class="track-item'+cls+'" onclick="playTrack('+i+')">'
+                html += '<div class="track-item'+cls+'" data-idx="'+i+'" ondblclick="playTrack('+i+')" onclick="selectTrack(event,'+i+')">'
                     + '<div class="ti-info"><div class="ti-title">'+esc(title)+'</div>'
                     + '<div class="ti-artist">'+esc(t.artist||'—')+'</div></div>'
                     + '<div class="ti-dur">'+dur+'</div></div>';
@@ -654,6 +668,22 @@ PLAYER_TEMPLATE = r"""
         }
 
         function filterTracks() { renderTracks(); }
+
+        var selectedIdx = -1;
+
+        function selectTrack(e, idx) {
+            selectedIdx = idx;
+            document.querySelectorAll('.track-item').forEach(function(el){
+                el.classList.toggle('selected', parseInt(el.dataset.idx) === idx);
+            });
+        }
+
+        function refreshTracks() {
+            var btn = document.getElementById('refreshBtn');
+            btn.classList.add('spinning');
+            setTimeout(function(){ btn.classList.remove('spinning'); }, 600);
+            loadTracks();
+        }
 
         function esc(s) {
             var d = document.createElement('div');
