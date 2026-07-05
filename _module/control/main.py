@@ -9,7 +9,7 @@ from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_file
 import psutil
 
-VERSION = '1.4'
+VERSION = '1.5'
 
 app = Flask(__name__)
 
@@ -79,7 +79,6 @@ CONTROL_TEMPLATE = r"""
             <div class="header-info" id="serverInfo">{{ description }}</div>
         </div>
         <div class="controls">
-            <span id="adminStatus" style="font-size: 12px; margin-right: 10px;"></span>
         </div>
     </div>
     <div class="content">
@@ -124,25 +123,6 @@ CONTROL_TEMPLATE = r"""
     <script>
         let selectedFile = null;
         let currentPath = 'C:\\';
-
-        async function checkAdminStatus() {
-            try {
-                const r = await fetch('/api/admin-status');
-                const d = await r.json();
-                const statusEl = document.getElementById('adminStatus');
-                if (d.is_admin) {
-                    statusEl.innerHTML = '<span style="color: #21bf4b;">✓ Admin</span>';
-                } else {
-                    statusEl.innerHTML = '<span style="color: #ffcc00;">⚠ Not Admin</span> <button class="btn btn-default" style="margin-left: 8px; padding: 3px 8px; font-size: 11px;" onclick="requestElevation()">Restart as Admin</button>';
-                }
-            } catch(e) {}
-        }
-
-        async function requestElevation() {
-            if (confirm('Restart module with Administrator rights?')) {
-                window.parent.postMessage({action: 'restart-elevated', module: 'control'}, '*');
-            }
-        }
 
         async function runShell() {
             const input = document.getElementById('shellInput');
@@ -282,7 +262,6 @@ CONTROL_TEMPLATE = r"""
         browseTo('C:\\');
         updateClock();
         setInterval(updateClock, 60000);
-        checkAdminStatus();
     </script>
 </body>
 </html>
@@ -300,16 +279,6 @@ def index():
     except Exception:
         pass
     return render_template_string(CONTROL_TEMPLATE, version=VERSION, description=description)
-
-
-@app.route('/api/admin-status')
-def api_admin_status():
-    try:
-        import ctypes
-        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        is_admin = False
-    return jsonify({'is_admin': is_admin})
 
 
 @app.route('/api/shell', methods=['POST'])

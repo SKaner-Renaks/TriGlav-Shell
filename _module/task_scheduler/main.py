@@ -10,7 +10,7 @@ import argparse
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.4.5'
+VERSION = '2.4.6'
 
 app = Flask(__name__)
 
@@ -409,16 +409,6 @@ def api_server_info():
     return jsonify({'info': get_server_info()})
 
 
-@app.route('/api/admin-status')
-def api_admin_status():
-    try:
-        import ctypes
-        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        is_admin = False
-    return jsonify({'is_admin': is_admin})
-
-
 @app.route('/api/task/enable', methods=['POST'])
 def api_task_enable():
     data = request.get_json()
@@ -617,7 +607,6 @@ HTML_TEMPLATE = r"""
             <div class="header-info" id="serverInfo">{{ description }}</div>
         </div>
         <div class="controls">
-            <span id="adminStatus" style="font-size: 12px; margin-right: 10px;"></span>
             <button class="btn btn-primary" onclick="refreshTasks()">Refresh</button>
         </div>
     </div>
@@ -770,31 +759,11 @@ HTML_TEMPLATE = r"""
         let visibleTasks = null;
         let refreshTimer = null;
         let autoRefresh = true;
-        let isAdmin = false;
 
         function getInterval() { return Math.max(1, parseInt(document.getElementById('refreshInterval').value) || 15); }
 
         function updateRefresh() { if (autoRefresh) startRefresh(); }
 
-        async function checkAdminStatus() {
-            try {
-                const r = await fetch('/api/admin-status');
-                const d = await r.json();
-                isAdmin = d.is_admin;
-                const statusEl = document.getElementById('adminStatus');
-                if (isAdmin) {
-                    statusEl.innerHTML = '<span style="color: #21bf4b;">✓ Admin</span>';
-                } else {
-                    statusEl.innerHTML = '<span style="color: #ffcc00;">⚠ Not Admin</span> <button class="btn btn-default" style="margin-left: 8px; padding: 3px 8px; font-size: 11px;" onclick="requestElevation()">Restart as Admin</button>';
-                }
-            } catch(e) {}
-        }
-
-        async function requestElevation() {
-            if (confirm('Restart module with Administrator rights?')) {
-                window.parent.postMessage({action: 'restart-elevated', module: 'task_scheduler'}, '*');
-            }
-        }
 
         function startRefresh() {
             if (refreshTimer) clearInterval(refreshTimer);
@@ -1087,8 +1056,6 @@ HTML_TEMPLATE = r"""
         startRefresh();
         updateClock();
         setInterval(updateClock, 60000);
-        checkAdminStatus();
-
         const origRenderFilter = renderFilterList;
         renderFilterList = function() { origRenderFilter(); };
         setInterval(() => { if (document.getElementById('filterPanel').classList.contains('active')) renderFilterList(); }, 5000);

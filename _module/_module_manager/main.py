@@ -9,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.4'
+VERSION = '1.3.5'
 
 app = Flask(__name__)
 
@@ -170,8 +170,6 @@ MANAGER_TEMPLATE = r"""
         .btn-restart { background:none; border:1px solid #47a8ff; color:#47a8ff; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
         .btn-restart:hover { background:#47a8ff; color:#fff; }
         .btn-restart:disabled { opacity:0.3; cursor:not-allowed; border-color:#666; color:#666; }
-        .btn-admin { background:none; border:1px solid #ff9800; color:#ff9800; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
-        .btn-admin:hover { background:#ff9800; color:#fff; }
 
         .error-msg { background:#3d1a1a; border:1px solid #ff6c59; border-radius:3px; padding:8px 12px; margin-bottom:12px; color:#ff6c59; font-size:12px; }
 
@@ -197,8 +195,6 @@ MANAGER_TEMPLATE = r"""
             <div class="header-info">Управление модулями оболочки</div>
         </div>
         <div class="controls">
-            <span id="adminStatus" style="font-size:12px;margin-right:10px;"></span>
-            <button id="restartAdminBtn" class="btn btn-sm btn-admin" onclick="restartElevated('module_manager')" style="display:none;">Restart as Admin</button>
             <button class="btn btn-primary" onclick="saveAndRestart()">Применить и перезапустить</button>
         </div>
     </div>
@@ -272,7 +268,6 @@ MANAGER_TEMPLATE = r"""
         let statuses = {};
         let currentConfig = {};
         let lockEnabled = true;
-        let isAdmin = false;
         let pendingDeleteName = null;
 
         async function loadModules() {
@@ -428,10 +423,6 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
-        function restartElevated(name) {
-            window.parent.postMessage({action: 'restart-elevated', module: name}, '*');
-        }
-
         function deleteModule(btn) {
             const name = btn.dataset.name;
             const type = btn.dataset.type;
@@ -501,25 +492,7 @@ MANAGER_TEMPLATE = r"""
             }
         }
 
-        async function checkAdminStatus() {
-            try {
-                const r = await fetch('/api/admin-status');
-                const d = await r.json();
-                isAdmin = d.is_admin;
-                const statusEl = document.getElementById('adminStatus');
-                const adminBtn = document.getElementById('restartAdminBtn');
-                if (isAdmin) {
-                    statusEl.innerHTML = '<span style="color:#21bf4b;">&#10003; Admin</span>';
-                    if (adminBtn) adminBtn.style.display = 'none';
-                } else {
-                    statusEl.innerHTML = '<span style="color:#ffcc00;">&#9888; Not Admin</span>';
-                    if (adminBtn) adminBtn.style.display = 'inline-block';
-                }
-            } catch(e) {}
-        }
-
         loadModules();
-        checkAdminStatus();
     </script>
 </body>
 </html>
@@ -559,16 +532,6 @@ def api_module_restart():
         return jsonify(result)
     return jsonify({'error': 'Failed to restart'}), 500
 
-
-@app.route('/api/admin-status')
-def api_admin_status():
-    """Проверка прав администратора."""
-    try:
-        import ctypes
-        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
-    except Exception:
-        is_admin = False
-    return jsonify({'is_admin': is_admin})
 
 
 @app.route('/api/modules_save', methods=['POST'])

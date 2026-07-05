@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.3.9'
+VERSION = '1.4.0'
 
 app = Flask(__name__)
 
@@ -647,6 +647,16 @@ def api_module_log_file(name):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/admin-status')
+def api_admin_status():
+    try:
+        import ctypes
+        is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    except Exception:
+        is_admin = False
+    return jsonify({'is_admin': is_admin})
+
+
 @app.route('/_images/<path:filename>')
 def serve_image(filename):
     from flask import send_from_directory
@@ -732,6 +742,8 @@ SHELL_TEMPLATE = r"""
         .btn-danger { background:#4d1a1a; color:#ff6c59; border-color:#ff6c59; }
         .btn-danger:hover { background:#ff6c59; color:#fff; }
         .btn-sm { padding:3px 8px; font-size:11px; }
+        .btn-admin { background:none; border:1px solid #ff9800; color:#ff9800; border-radius:3px; padding:3px 8px; cursor:pointer; font-size:11px; font-family:inherit; }
+        .btn-admin:hover { background:#ff9800; color:#fff; }
 
         .workspace { display:flex; flex:1; overflow:hidden; }
 
@@ -806,6 +818,8 @@ SHELL_TEMPLATE = r"""
                 <span id="module-name"></span>
                 <span class="port" id="module-port"></span>
                 {% if environment == 'development' %}<span id="module-info" style="font-size:13px;color:#999;margin-left:12px;"></span>{% endif %}
+                <span id="adminStatus" style="font-size:12px;margin-left:12px;"></span>
+                <button id="restartAdminBtn" class="btn btn-sm btn-admin" onclick="restartElevated()" style="display:none;margin-left:8px;">Restart as Admin</button>
                 <button class="btn btn-sm btn-default" onclick="restartModule()">Restart</button>
                 {% if environment == 'development' %}
                 <a id="module-web-link" href="#" target="_blank" class="btn btn-sm btn-default" style="text-decoration:none;display:none;">Web</a>
@@ -924,6 +938,16 @@ SHELL_TEMPLATE = r"""
                 // Development Block — блок разработчика
                 document.getElementById('module-name').innerHTML = '<img src="/_images/developer_board.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Development';
                 document.getElementById('module-port').textContent = ':' + mod.port;
+                // Admin badge + Restart as Admin button
+                const adminEl = document.getElementById('adminStatus');
+                const adminBtn = document.getElementById('restartAdminBtn');
+                if (mod.requires_admin) {
+                    adminEl.innerHTML = '<span style="color:#ff9800;">Admin required</span>';
+                    adminBtn.style.display = 'inline-block';
+                } else {
+                    adminEl.innerHTML = '';
+                    adminBtn.style.display = 'none';
+                }
                 document.getElementById('module-frame').src = '/proxy/' + mod.port + '/';
                 document.getElementById('module-frame').style.display = 'block';
                 document.getElementById('placeholder').style.display = 'none';
@@ -932,6 +956,8 @@ SHELL_TEMPLATE = r"""
                 // Development Block — блок разработчика
                 document.getElementById('module-name').innerHTML = '<img src="/_images/developer_board.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Development';
                 document.getElementById('module-port').textContent = 'not running';
+                document.getElementById('adminStatus').innerHTML = '';
+                document.getElementById('restartAdminBtn').style.display = 'none';
                 document.getElementById('module-frame').style.display = 'none';
                 document.getElementById('placeholder').style.display = 'flex';
                 document.getElementById('placeholder').innerHTML = '<div style="text-align:center;"><div style="margin-bottom:12px;">Module not running</div><button class="btn btn-primary" onclick="startModule(\'' + name + '\')">Start Module</button></div>';
@@ -1157,6 +1183,13 @@ SHELL_TEMPLATE = r"""
         updateClock();
         setInterval(updateClock, 60000);
         setInterval(loadModules, 10000);
+
+        function restartElevated() {
+            if (!currentModule) return;
+            if (confirm('Restart ' + currentModule + ' with Administrator rights?')) {
+                window.parent.postMessage({action: 'restart-elevated', module: currentModule}, '*');
+            }
+        }
 
         async function openFolder() {
             if (!currentModule) return;
