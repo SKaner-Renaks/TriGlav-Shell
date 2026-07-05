@@ -342,7 +342,7 @@ PLAYER_TEMPLATE = r"""
             width: 120%; height: 120%;
             background-size: cover;
             background-position: center;
-            filter: blur(40px) brightness(0.3);
+            filter: blur(13px) brightness(0.3);
             z-index: 1;
             transition: background-image 0.5s ease;
         }
