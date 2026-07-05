@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.5'
+VERSION = '1.0.6'
 
 app = Flask(__name__)
 
@@ -376,6 +376,20 @@ PLAYER_TEMPLATE = r"""
         }
         .eq-wrap canvas { width: 100%; height: 100%; display: block; }
 
+        /* EQ MODE — полноразмерный эквалайзер как фон */
+        .right.eq-mode .bg-blur { display: none; }
+        .right.eq-mode .cover-wrap { display: none; }
+        .right.eq-mode .eq-wrap {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            height: 100%;
+            max-width: none;
+            background: var(--bg);
+            border: none;
+            border-radius: 0;
+            z-index: 1;
+        }
+
         /* NOW PLAYING */
         .np-info { text-align: center; max-width: 500px; }
         .np-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -549,7 +563,7 @@ PLAYER_TEMPLATE = r"""
             </div>
             <div class="track-list" id="trackList"></div>
         </div>
-        <div class="right">
+        <div class="right" id="rightPanel">
             <div class="bg-blur" id="bgBlur"></div>
             <div class="cover-wrap">
                 <img id="npCover" src="/_images/default_cover.png" alt="Cover">
@@ -568,6 +582,7 @@ PLAYER_TEMPLATE = r"""
                 <span class="time" id="totTime">0:00</span>
             </div>
             <div class="controls">
+                <button class="mode-btn" id="btnEQ" onclick="toggleEQ()" title="Эквалайзер"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M200-200v-232.31h110.77V-200H200Zm224.62 0v-560h110.76v560H424.62Zm224.61 0v-367.69H760V-200H649.23Z"/></svg></button>
                 <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M576.77-200v-30.77h131.54L545.85-393l21.23-22.23 162.15 161.69v-127.15H760V-200H576.77ZM222-200l-22-22.23 507.23-507H576.77V-760H760v180.69h-30.77V-707L222-200Zm166.08-350.69L200-738.54 221.46-760l188.85 187.85-22.23 21.46Z"/></svg></button>
                 <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M269.23-295.38v-369.24H300v369.24h-30.77Zm421.54 0L420.15-480l270.62-184.62v369.24ZM660-480Zm0 125.77v-252.31L474.38-480 660-354.23Z"/></svg></button>
                 <button class="ctrl-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><svg id="playIcon" viewBox="0 -960 960 960" fill="currentColor"><path d="m401.46-341.54 217-138.46-217-138.46v276.92ZM480.13-120q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg></button>
@@ -854,6 +869,14 @@ PLAYER_TEMPLATE = r"""
             audio.volume = val / 100;
             if (gainNode) gainNode.gain.value = val / 100;
             document.getElementById('volVal').textContent = val;
+        }
+
+        /* EQ MODE */
+        var eqMode = false;
+        function toggleEQ() {
+            eqMode = !eqMode;
+            document.getElementById('rightPanel').classList.toggle('eq-mode', eqMode);
+            document.getElementById('btnEQ').classList.toggle('active', eqMode);
         }
 
         /* MODES */
