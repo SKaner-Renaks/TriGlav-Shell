@@ -1,4 +1,4 @@
-﻿# История изменений TriGlav Shell
+# История изменений TriGlav Shell
 
 ## v1.2.8
 - **Фикс sidebar**: удалён `if (!m.running) return;` из `renderModuleList()` — незапущенные модули теперь отображаются в sidebar с красным индикатором
@@ -28,50 +28,63 @@
 - **Port allocation**: если `current_port` пустой или `0` — генерируется через `5000 + hash(name) % 100`
 - **Folder foreground**: полная реализация через `EnumWindows` + `ShowWindow(SW_RESTORE)` + `SetForegroundWindow`
 
-## v1.3.4 (Shell)
+## v1.3.4
 - **Info block**: "Информация" → "Development"
 - **Info block icon**: `developer_board.svg` с фильтром `invert(1)`
 - **Development Block**: добавлен комментарий `// Development Block — блок разработчика`
 
-## v1.3.9 (Shell)
-- **Info block**: "Информация" → "Development"
+## v1.3.5
+- **Фикс JS innerHTML**: заменены `''` на двойные кавычки в строке с `style`
+
+## v1.3.6
 - **Info block icon**: `developer_board.svg` без инверсии (SVG уже светлый)
-- **Development Block**: комментарий в коде
 
----
+## v1.3.9
+- **Info block**: "Информация" → "Development" (финальная версия)
+- **Info block icon**: `developer_board.svg` без инверсии
 
-## module_manager v1.2.1
-- Базовый функционал управления модулями
+## v1.4.0
+- **Admin check в Shell**: добавлен `/api/admin-status`, `checkAdminStatus()`, `#adminStatus`, "Restart as Admin" в Development Block
+- **Admin badge**: показывает "Admin required" для модулей с `requires_admin`
+- **Admin CSS**: `.btn-admin` для кнопки "Restart as Admin"
 
-## module_manager v1.2.2
-- **Path traversal**: `sanitize_name()` — проверка имени модуля `[a-zA-Z0-9_]`
-- **Auth bypass**: добавлен `proxies={'http': None, 'https': None}` для запросов к Shell API
-- **XSS**: `escape_html()` для title, description, name
-- **Toggle CSS/JS**: начальный класс `toggle-on` (синий, включена)
-- **Shell port**: читается из `config.cfg` вместо хардкода 8080
-- **Service delete dialog**: модальное окно подтверждения для удаления сервисных модулей
-- **loadModules()**: показывает ошибку в `errorBanner` при неудаче
-- **saveAndRestart()**: проверяет `r.ok` перед отправкой restart
+## v1.4.1
+- **Proxy bypass**: исправлен `log-file` endpoint — использует `manifest['_path']` вместо `os.path.join(MODULE_DIR, name)`
+- **Логирование**: добавлен вывод в `_data/log_file.log` при старте Shell
 
-## module_manager v1.3.0
-- **requires_admin**: манифест обновлён — `true`
-- **Module status API**: `/api/modules_status` — получение портов и статусов от Shell
-- **Restart API**: `/api/module_restart?name=...` — перезапуск модуля через Shell
-- **Admin status API**: `/api/admin-status` — проверка прав администратора
-- **Admin badge**: в хедере показывает ✓ Admin / ⚠ Not Admin
-- **Restart as Admin**: кнопка в хедере для модулей с `requires_admin`
-- **Колонка Порт**: зелёный/красный индикатор статуса
-- **Колонка Действия**: кнопка Restart для работающих модулей
-- **Единое выравнивание**: `table-layout: fixed` с фиксированными ширинами
+## v1.4.2
+- **Фикс log-file endpoint**: исправлен путь для сервисных модулей с префиксом `_`
 
-## module_manager v1.3.2
-- **Колонка Версия**: отображение версии модуля в таблице
-- **Restart lock**: кнопка Restart блокируется при включённой блокировке для сервисных модулей
-- **Кнопки**: "Действия" → "Перезапуск", "Удалить" → "Remove"
+## v1.4.3
+- **Log checkbox persistence**: состояние галочки Log сохраняется в `config.cfg` секция `[log_enabled]`
+- **load_log_enabled() / save_log_enabled()**: загрузка/сохранение состояний логирования
+- **Удалён `--log-file`**: модули используют только `--log`, путь лога определяется модулем
 
-## module_manager v1.3.3
-- **Disabled style**: `.btn-restart:disabled` — `opacity:0.3; cursor:not-allowed; border-color:#666; color:#666`
-- **Button text**: "Перезапустить" → "Restart", "Удалить" → "Remove"
+## v1.4.4
+- **Restart-elevated fix**: проверка `IsUserAnAdmin()` перед запуском
+- **Log separators**: `==================================================` в логе при каждом старте модуля
+- **Детальное логирование restart-elevated**: попытка, статус, ошибки
 
-## module_manager v1.3.4
-- Версия обновлена для фикса disabled стиля кнопки Restart
+## v1.4.5
+- **Mode: Admin/User**: отображается в хедере Shell рядом с IP и временем
+
+## v1.4.6
+- **Log checkbox state**: галочка устанавливается из данных сервера при выборе модуля
+
+## v1.4.7
+- **Restart-elevated port wait**: ожидание освобождения порта до 10 попыток
+- **Port availability check**: проверка занятости порта перед запуском нового процесса
+
+## v1.4.8
+- **Убран confirm()**: только UAC-промпт Windows, без лишнего окна подтверждения
+- **Улучшен restart-elevated**: ожидание освобождения порта + проверка запуска
+
+## v1.4.9
+- **PowerShell Start-Process**: заменён `ShellExecuteW` на `Start-Process` с `-WorkingDirectory` для корректного запуска модулей с правами администратора
+
+## v1.5.0
+- **Удалён admin elevation**: удалены `/api/module/<name>/restart-elevated`, `/api/admin-status`, кнопка "Restart as Admin", "Admin required" badge, JS `restartElevated()`, обработчик `postMessage`
+- **Оставлено**: `is_admin` в `get_server_info()` для отображения "Mode: Admin/User"
+
+## v1.5.1
+- **Фикс JS синтаксиса**: исправлена лишняя `}` в `selectModule()` (строка 950) и лишний код в `postMessage` обработчике
