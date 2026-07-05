@@ -632,8 +632,11 @@ def api_module_open_folder(name):
 def api_module_log_file(name):
     if ENVIRONMENT != 'development':
         return jsonify({'error': 'only in development mode'}), 400
-    mod_path = os.path.join(MODULE_DIR, name)
-    log_path = os.path.join(mod_path, 'log_file.log')
+    modules = discover_modules()
+    manifest = next((m for m in modules if m['name'] == name), None)
+    if not manifest:
+        return jsonify({'error': 'Module not found'}), 404
+    log_path = os.path.join(manifest['_path'], 'log_file.log')
     if not os.path.exists(log_path):
         return jsonify({'error': 'Log file not found', 'path': log_path}), 404
     try:
