@@ -329,28 +329,57 @@ PLAYER_TEMPLATE = r"""
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 30px;
             gap: 16px;
             overflow: hidden;
+            position: relative;
         }
+
+        .bg-blur {
+            position: absolute;
+            top: -10%; left: -10%;
+            width: 120%; height: 120%;
+            background-size: cover;
+            background-position: center;
+            filter: blur(40px) brightness(0.3);
+            z-index: 1;
+            transition: background-image 0.5s ease;
+        }
+
+        .right > *:not(.bg-blur) {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cover-wrap {
+            width: 240px;
+            height: 240px;
+            border-radius: 12px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            transition: transform 0.3s ease;
+            flex-shrink: 0;
+        }
+        .cover-wrap:hover { transform: scale(1.02); }
+        .cover-wrap img { width: 100%; height: 100%; object-fit: cover; }
 
         /* EQ CANVAS */
         .eq-wrap {
             width: 100%;
-            max-width: 500px;
-            height: 120px;
-            background: var(--panel);
-            border: 1px solid var(--border);
+            max-width: 450px;
+            height: 70px;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 6px;
             overflow: hidden;
         }
         .eq-wrap canvas { width: 100%; height: 100%; display: block; }
 
         /* NOW PLAYING */
-        .np-info { text-align: center; }
-        .np-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-        .np-artist { font-size: 14px; color: var(--muted); margin-bottom: 2px; }
-        .np-file { font-size: 11px; color: var(--muted); font-style: italic; }
+        .np-info { text-align: center; max-width: 500px; }
+        .np-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .np-artist { font-size: 14px; color: rgba(255,255,255,0.7); margin-bottom: 2px; }
+        .np-file { font-size: 11px; color: rgba(255,255,255,0.4); font-style: italic; }
 
         /* PROGRESS */
         .progress-wrap {
@@ -512,12 +541,16 @@ PLAYER_TEMPLATE = r"""
             <div class="track-list" id="trackList"></div>
         </div>
         <div class="right">
-            <div class="eq-wrap"><canvas id="eqCanvas"></canvas></div>
+            <div class="bg-blur" id="bgBlur"></div>
+            <div class="cover-wrap">
+                <img id="npCover" src="/_images/default_cover.svg" alt="Cover">
+            </div>
             <div class="np-info">
                 <div class="np-title" id="npTitle">—</div>
                 <div class="np-artist" id="npArtist"></div>
                 <div class="np-file" id="npFile"></div>
             </div>
+            <div class="eq-wrap"><canvas id="eqCanvas"></canvas></div>
             <div class="progress-wrap">
                 <span class="time" id="curTime">0:00</span>
                 <div class="progress-bar" id="progBar" onclick="seek(event)">
@@ -713,6 +746,14 @@ PLAYER_TEMPLATE = r"""
             document.getElementById('npArtist').textContent = [t.artist, t.album].filter(Boolean).join(' — ');
             document.getElementById('npFile').textContent = t.file;
             document.getElementById('totTime').textContent = fmtTime(t.duration);
+
+            var coverUrl = '/_images/default_cover.svg';
+            if (t.has_cover) {
+                coverUrl = '/module-cover/mp3_player/' + encodeURIComponent(t.file);
+            }
+            document.getElementById('npCover').src = coverUrl;
+            document.getElementById('bgBlur').style.backgroundImage = "url('" + coverUrl + "')";
+
             renderTracks();
         }
 
