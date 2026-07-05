@@ -397,9 +397,9 @@ PLAYER_TEMPLATE = r"""
             transition: color 0.15s;
         }
         .ctrl-btn:hover { color: var(--accent); }
-        .ctrl-btn img { width: 56px; height: 56px; transition: filter 0.15s; }
+        .ctrl-btn svg { width: 56px; height: 56px; transition: filter 0.15s; }
         .ctrl-btn.active { color: var(--accent); }
-        .ctrl-btn.active img { filter: drop-shadow(0 0 6px var(--accent)); }
+        .ctrl-btn.active svg { filter: drop-shadow(0 0 6px var(--accent)); }
 
         /* MODE BUTTONS */
         .mode-btn {
@@ -416,8 +416,8 @@ PLAYER_TEMPLATE = r"""
         }
         .mode-btn:hover { color: var(--accent); }
         .mode-btn.active { color: var(--accent); }
-        .mode-btn img { width: 40px; height: 40px; transition: filter 0.15s; }
-        .mode-btn.active img { filter: drop-shadow(0 0 6px var(--accent)); }
+        .mode-btn svg { width: 40px; height: 40px; transition: filter 0.15s; }
+        .mode-btn.active svg { filter: drop-shadow(0 0 6px var(--accent)); }
 
         /* MODAL */
         .modal-overlay {
@@ -512,11 +512,11 @@ PLAYER_TEMPLATE = r"""
                 <span class="time" id="totTime">0:00</span>
             </div>
             <div class="controls">
-                <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><img src="/_images/shuffle.svg"></button>
-                <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><img src="/_images/skip_previous.svg"></button>
-                <button class="ctrl-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><img id="playIcon" src="/_images/play_circle.svg"></button>
-                <button class="ctrl-btn" onclick="nextTrack()" title="Следующий"><img src="/_images/skip_next.svg"></button>
-                <button class="mode-btn" id="btnRepeat" onclick="toggleRepeat()" title="Повтор"><img id="repeatIcon" src="/_images/repeat.svg"></button>
+                <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M576.77-200v-30.77h131.54L545.85-393l21.23-22.23 162.15 161.69v-127.15H760V-200H576.77ZM222-200l-22-22.23 507.23-507H576.77V-760H760v180.69h-30.77V-707L222-200Zm166.08-350.69L200-738.54 221.46-760l188.85 187.85-22.23 21.46Z"/></svg></button>
+                <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M269.23-295.38v-369.24H300v369.24h-30.77Zm421.54 0L420.15-480l270.62-184.62v369.24ZM660-480Zm0 125.77v-252.31L474.38-480 660-354.23Z"/></svg></button>
+                <button class="ctrl-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><svg id="playIcon" viewBox="0 -960 960 960" fill="currentColor"><path d="m401.46-341.54 217-138.46-217-138.46v276.92ZM480.13-120q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg></button>
+                <button class="ctrl-btn" onclick="nextTrack()" title="Следующий"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M660-295.38v-369.24h30.77v369.24H660Zm-390.77 0v-369.24L539.85-480 269.23-295.38ZM300-480Zm0 125.77L486.38-480 300-606.54v252.31Z"/></svg></button>
+                <button class="mode-btn" id="btnRepeat" onclick="toggleRepeat()" title="Повтор"><svg id="repeatIcon" viewBox="0 -960 960 960" fill="currentColor"><path d="M292.31-120 160-252.31l132.31-132.31 22 22.47-94.46 94.46h481.69v-160h30.77v190.77H219.85l94.46 94.46-22 22.46Zm-64.62-412.31v-190.77h512.46l-94.46-94.46 22-22.46L800-707.69 667.69-575.38l-22-22.47 94.46-94.46H258.46v160h-30.77Z"/></svg></button>
             </div>
         </div>
     </div>
@@ -544,6 +544,11 @@ PLAYER_TEMPLATE = r"""
         var audioCtx, analyser, source, gainNode;
         var eqInited = false;
         var eqData = new Uint8Array(64);
+
+        var SVG_PLAY = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="m401.46-341.54 217-138.46-217-138.46v276.92ZM480.13-120q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg>';
+        var SVG_PAUSE = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M396.92-340h30.77v-280h-30.77v280Zm135.39 0h30.77v-280h-30.77v280Zm-52.18 220q-74.44 0-139.79-28.34t-114.48-77.42q-49.13-49.08-77.49-114.37Q120-405.42 120-479.87q0-74.67 28.34-140.41 28.34-65.73 77.42-114.36 49.08-48.63 114.37-76.99Q405.42-840 479.87-840q74.67 0 140.41 28.34 65.73 28.34 114.36 76.92 48.63 48.58 76.99 114.26Q840-554.81 840-480.13q0 74.44-28.34 139.79t-76.92 114.48q-48.58 49.13-114.26 77.49Q554.81-120 480.13-120Zm-.13-30.77q137.38 0 233.31-96.04 95.92-96.04 95.92-233.19 0-137.38-95.92-233.31-95.93-95.92-233.31-95.92-137.15 0-233.19 95.92-96.04 95.93-96.04 233.31 0 137.15 96.04 233.19 96.04 96.04 233.19 96.04ZM480-480Z"/></svg>';
+        var SVG_REPEAT = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M292.31-120 160-252.31l132.31-132.31 22 22.47-94.46 94.46h481.69v-160h30.77v190.77H219.85l94.46 94.46-22 22.46Zm-64.62-412.31v-190.77h512.46l-94.46-94.46 22-22.46L800-707.69 667.69-575.38l-22-22.47 94.46-94.46H258.46v160h-30.77Z"/></svg>';
+        var SVG_REPLAY = '<svg viewBox="0 -960 960 960" fill="currentColor"><path d="M355.27-144.92q-58.19-24.93-101.81-68.54-43.61-43.62-68.54-101.81Q160-373.46 160-440h30.77q0 120.38 84.42 204.81 84.43 84.42 204.81 84.42t204.81-84.42q84.42-84.43 84.42-204.81t-83.08-204.81q-83.07-84.42-203.46-84.42h-23.77l70.7 69.92-21.77 21.23-107.77-108.54 109.3-108.53 21.77 21L457-760h23q66.54 0 124.73 24.92 58.19 24.93 101.81 68.54 43.61 43.62 68.54 101.81Q800-506.54 800-440t-24.92 124.73q-24.93 58.19-68.54 101.81-43.62 43.61-101.81 68.54Q546.54-120 480-120t-124.73-24.92Z"/></svg>';
 
         var audio = document.getElementById('audio');
 
@@ -672,7 +677,7 @@ PLAYER_TEMPLATE = r"""
             var t = allTracks[idx];
             audio.src = '/module-music/mp3_player/' + encodeURIComponent(t.file);
             audio.play();
-            document.getElementById('playIcon').src = '/_images/pause_circle.svg';
+            document.getElementById('playIcon').outerHTML = SVG_PAUSE.replace('<svg','<svg id="playIcon"');
             document.getElementById('btnPlay').classList.add('active');
             document.getElementById('npTitle').textContent = t.title || t.filename;
             document.getElementById('npArtist').textContent = [t.artist, t.album].filter(Boolean).join(' — ');
@@ -690,11 +695,11 @@ PLAYER_TEMPLATE = r"""
                 connectSource();
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
                 audio.play();
-                document.getElementById('playIcon').src = '/_images/pause_circle.svg';
+                document.getElementById('playIcon').outerHTML = SVG_PAUSE.replace('<svg','<svg id="playIcon"');
                 document.getElementById('btnPlay').classList.add('active');
             } else {
                 audio.pause();
-                document.getElementById('playIcon').src = '/_images/play_circle.svg';
+                document.getElementById('playIcon').outerHTML = SVG_PLAY.replace('<svg','<svg id="playIcon"');
                 document.getElementById('btnPlay').classList.remove('active');
             }
         }
@@ -729,7 +734,7 @@ PLAYER_TEMPLATE = r"""
             } else if (repeatMode === 2 || playlist.indexOf(currentIdx) < playlist.length - 1) {
                 nextTrack();
             } else {
-                document.getElementById('playIcon').src = '/_images/play_circle.svg';
+                document.getElementById('playIcon').outerHTML = SVG_PLAY.replace('<svg','<svg id="playIcon"');
                 document.getElementById('btnPlay').classList.remove('active');
             }
         });
@@ -763,9 +768,9 @@ PLAYER_TEMPLATE = r"""
         function toggleRepeat() {
             repeatMode = (repeatMode + 1) % 3;
             var btn = document.getElementById('btnRepeat');
-            var icon = document.getElementById('repeatIcon');
             btn.classList.toggle('active', repeatMode > 0);
-            icon.src = repeatMode === 1 ? '/_images/replay.svg' : '/_images/repeat.svg';
+            var svg = repeatMode === 1 ? SVG_REPLAY : SVG_REPEAT;
+            document.getElementById('repeatIcon').outerHTML = svg.replace('<svg','<svg id="repeatIcon"');
             btn.title = ['Повтор выкл', 'Повтор трека', 'Повтор списка'][repeatMode];
         }
 
