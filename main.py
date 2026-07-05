@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import json
 import time
@@ -947,7 +947,6 @@ SHELL_TEMPLATE = r"""
                 // Development Block — блок разработчика
                 document.getElementById('module-name').innerHTML = '<img src="/_images/developer_board.svg" style="width:16px;height:16px;vertical-align:middle;margin-right:6px;">Development';
                 document.getElementById('module-port').textContent = ':' + mod.port;
-                }
                 document.getElementById('module-frame').src = '/proxy/' + mod.port + '/';
                 document.getElementById('module-frame').style.display = 'block';
                 document.getElementById('placeholder').style.display = 'none';
@@ -1221,9 +1220,6 @@ SHELL_TEMPLATE = r"""
                     document.body.innerHTML = '<div style="display:flex;justify-content:center;align-items:center;height:100vh;color:#47a8ff;font-size:24px;">Перезапуск Shell...</div>';
                     setTimeout(() => location.reload(), 5000);
                 } catch(e) {}
-                        alert('Error: ' + (d.error || 'Failed to elevate'));
-                    }
-                } catch(e) { alert('Error: ' + e.message); }
             }
         });
     </script>
