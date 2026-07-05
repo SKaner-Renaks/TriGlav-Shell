@@ -467,23 +467,37 @@ def api_module_restart_elevated(name):
     main_py = os.path.join(mod_path, 'main.py')
     port = module_ports.get(name, manifest.get('current_port', 5000))
 
-    if not is_port_free(port):
+    # Ждём полного освобождения порта
+    for i in range(10):
+        if is_port_free(port):
+            break
         try:
             with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [WARN] Port {port} still occupied, waiting...\n')
+                f.write(f'{datetime.now()} [WARN] Port {port} still occupied (attempt {i+1}/10)...\n')
         except Exception:
             pass
-        time.sleep(2)
-        if not is_port_free(port):
-            return jsonify({'error': f'Port {port} is still in use. Try again later.'}), 500
+        time.sleep(1)
+    else:
+        return jsonify({'error': f'Port {port} is still in use after 10 seconds.'}), 500
 
     # Запуск с правами администратора
     try:
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(f'{datetime.now()} [INFO] Starting elevated process on port {port}\n')
         ctypes.windll.shell32.ShellExecuteW(None, 'runas', sys.executable, f'"{main_py}" --host 0.0.0.0 --port {port}', mod_path, 1)
-        time.sleep(3)
+        # Ждём пока порт будет занят
+        for i in range(15):
+            time.sleep(1)
+            if not is_port_free(port):
+                try:
+                    with open(log_path, 'a', encoding='utf-8') as f:
+                        f.write(f'{datetime.now()} [INFO] Port {port} is now occupied - module running\n')
+                except Exception:
+                    pass
+                return jsonify({'status': 'elevated', 'port': port})
         try:
             with open(log_path, 'a', encoding='utf-8') as f:
-                f.write(f'{datetime.now()} [INFO] Elevated process started on port {port}\n')
+                f.write(f'{datetime.now()} [WARN] Port {port} not occupied after 15s, module may have failed\n')
         except Exception:
             pass
         return jsonify({'status': 'elevated', 'port': port})
@@ -1274,9 +1288,7 @@ SHELL_TEMPLATE = r"""
 
         function restartElevated() {
             if (!currentModule) return;
-            if (confirm('Restart ' + currentModule + ' with Administrator rights?')) {
-                window.parent.postMessage({action: 'restart-elevated', module: currentModule}, '*');
-            }
+            window.parent.postMessage({action: 'restart-elevated', module: currentModule}, '*');
         }
 
         async function openFolder() {
@@ -1318,18 +1330,16 @@ SHELL_TEMPLATE = r"""
                     setTimeout(() => location.reload(), 5000);
                 } catch(e) {}
             } else if (data && data.action === 'restart-elevated' && data.module) {
-                if (confirm('Restart ' + data.module + ' with Administrator rights?')) {
-                    try {
-                        const r = await fetch('/api/module/' + data.module + '/restart-elevated', { method: 'POST' });
-                        const d = await r.json();
-                        if (d.status === 'elevated') {
-                            setTimeout(() => selectModule(data.module), 2000);
-                            loadModules();
-                        } else {
-                            alert('Error: ' + (d.error || 'Failed to elevate'));
-                        }
-                    } catch(e) { alert('Error: ' + e.message); }
-                }
+                try {
+                    const r = await fetch('/api/module/' + data.module + '/restart-elevated', { method: 'POST' });
+                    const d = await r.json();
+                    if (d.status === 'elevated') {
+                        setTimeout(() => selectModule(data.module), 2000);
+                        loadModules();
+                    } else {
+                        alert('Error: ' + (d.error || 'Failed to elevate'));
+                    }
+                } catch(e) { alert('Error: ' + e.message); }
             }
         });
     </script>
