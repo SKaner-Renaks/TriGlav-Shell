@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.4'
+VERSION = '1.0.5'
 
 app = Flask(__name__)
 
@@ -525,14 +525,14 @@ PLAYER_TEMPLATE = r"""
             <!-- BLUR SLIDER — удалить в следующей версии -->
             <div class="vol-wrap">
                 <label>Blur</label>
-                <input type="range" id="blurSlider" min="0" max="100" value="40" oninput="updateBlur(this.value)">
-                <span id="blurVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">40</span>
+                <span id="blurVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">13</span>
+                <input type="range" id="blurSlider" min="0" max="100" value="13" oninput="updateBlur(this.value)">
             </div>
             <!-- END BLUR SLIDER -->
             <div class="vol-wrap">
                 <label>Vol</label>
-                <input type="range" id="volume" min="0" max="100" value="80" oninput="setVolume(this.value)">
                 <span id="volVal" style="font-size:11px;color:var(--muted);min-width:28px;text-align:right;">80</span>
+                <input type="range" id="volume" min="0" max="100" value="80" oninput="setVolume(this.value)">
             </div>
         </div>
     </div>
