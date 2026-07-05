@@ -285,8 +285,6 @@ def start_module(manifest):
     cmd = [sys.executable, main_py, '--host', host, '--port', str(port)]
     if module_log_enabled.get(name):
         cmd.append('--log')
-        cmd.append('--log-file')
-        cmd.append(os.path.join(mod_path, 'log_file.log'))
     try:
         proc = subprocess.Popen(cmd, cwd=mod_path)
         module_processes[name] = proc
