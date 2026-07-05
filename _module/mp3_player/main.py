@@ -671,7 +671,7 @@ PLAYER_TEMPLATE = r"""
             if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
             currentIdx = idx;
             var t = allTracks[idx];
-            audio.src = '/music/' + encodeURIComponent(t.file);
+            audio.src = '/module-music/mp3_player/' + encodeURIComponent(t.file);
             audio.play();
             document.getElementById('playIcon').src = '/_images/pause_circle.svg';
             document.getElementById('npTitle').textContent = t.title || t.filename;
