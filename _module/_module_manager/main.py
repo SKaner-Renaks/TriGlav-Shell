@@ -506,8 +506,10 @@ def index():
 
 @app.route('/api/modules_list')
 def api_modules_list():
+    modules = get_all_modules()
+    logging.info('Modules list requested, found %d', len(modules))
     return jsonify({
-        'modules': get_all_modules(),
+        'modules': modules,
         'config': get_autostart_config()
     })
 
@@ -525,6 +527,7 @@ def api_modules_status():
 def api_module_restart():
     """Перезапуск модуля через Shell API."""
     name = request.args.get('name', '')
+    logging.info('Restart requested: %s', name)
     if not sanitize_name(name):
         return jsonify({'error': 'Invalid name'}), 400
     result = shell_api_post(f'/api/module/{name}/restart')
@@ -555,6 +558,7 @@ def api_delete():
     if not data:
         return jsonify({'error': 'No data provided'}), 400
     name = data.get('name', '')
+    logging.info('Delete requested: %s', name)
 
     if not sanitize_name(name):
         return jsonify({'error': 'Invalid module name'}), 400
@@ -570,10 +574,16 @@ def api_delete():
     if os.path.isdir(mod_dir):
         try:
             shutil.rmtree(mod_dir)
-            return jsonify({'status': 'deleted'})
+            result = {'status': 'deleted'}
+            logging.info('Delete result: %s', result)
+            return jsonify(result)
         except Exception as e:
-            return jsonify({'error': f'Failed to delete: {str(e)}'}), 500
-    return jsonify({'error': 'Not found'}), 404
+            result = {'error': f'Failed to delete: {str(e)}'}
+            logging.info('Delete result: %s', result)
+            return jsonify(result), 500
+    result = {'error': 'Not found'}
+    logging.info('Delete result: %s', result)
+    return jsonify(result), 404
 
 
 if __name__ == '__main__':
@@ -584,10 +594,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.log:
-        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'module.log')
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log_file.log')
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s [%(levelname)s] %(message)s')
         logging.info('Module Manager %s started', VERSION)
+        logging.info('Config path: %s', CONFIG_PATH)
+        logging.info('Shell port: %s', get_shell_port())
 
     print(f"Module Manager {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)
