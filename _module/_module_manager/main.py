@@ -597,9 +597,12 @@ if __name__ == '__main__':
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'log_file.log')
         logging.basicConfig(filename=log_path, level=logging.DEBUG,
                             format='%(asctime)s [%(levelname)s] %(message)s')
+        separator = '=' * 50
+        logging.info(separator)
         logging.info('Module Manager %s started', VERSION)
         logging.info('Config path: %s', CONFIG_PATH)
         logging.info('Shell port: %s', get_shell_port())
+        logging.info(separator)
 
     print(f"Module Manager {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)

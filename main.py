@@ -161,7 +161,10 @@ def get_server_info():
     except Exception:
         ip = '127.0.0.1'
     now = datetime.now().strftime('%d-%m-%Y %H:%M:%S')
-    return f'{hostname} | {ip} | {now}'
+    import ctypes
+    is_admin = ctypes.windll.shell32.IsUserAnAdmin() != 0
+    mode = 'Admin' if is_admin else 'User'
+    return f'{hostname} | {ip} | {now} | Mode: {mode}'
 
 
 def is_port_free(port):
