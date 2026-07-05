@@ -81,6 +81,11 @@ def serve_music(filepath):
     return send_from_directory(MUSIC_DIR, filepath)
 
 
+@app.route('/_images/<path:filename>')
+def serve_image(filename):
+    return send_from_directory(os.path.join(BASE_DIR, '_images'), filename)
+
+
 @app.route('/api/cover/<path:filepath>')
 def serve_cover(filepath):
     try:
@@ -383,7 +388,6 @@ PLAYER_TEMPLATE = r"""
             border: none;
             color: var(--text);
             cursor: pointer;
-            font-size: 22px;
             width: 44px;
             height: 44px;
             display: flex;
@@ -393,8 +397,10 @@ PLAYER_TEMPLATE = r"""
             transition: background 0.15s;
         }
         .ctrl-btn:hover { background: var(--hover); }
-        .ctrl-btn.play-btn { font-size: 28px; background: var(--accent); color: #fff; width: 56px; height: 56px; }
+        .ctrl-btn img { width: 28px; height: 28px; }
+        .ctrl-btn.play-btn { background: var(--accent); width: 56px; height: 56px; }
         .ctrl-btn.play-btn:hover { opacity: 0.85; }
+        .ctrl-btn.play-btn img { width: 36px; height: 36px; filter: brightness(0) invert(1); }
         .ctrl-btn.active-mode { color: var(--accent); }
 
         /* MODE BUTTONS */
@@ -403,13 +409,16 @@ PLAYER_TEMPLATE = r"""
             border: none;
             color: var(--muted);
             cursor: pointer;
-            font-size: 16px;
             padding: 6px;
             border-radius: 4px;
             transition: color 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .mode-btn:hover { color: var(--text); }
         .mode-btn.active { color: var(--accent); }
+        .mode-btn img { width: 20px; height: 20px; }
 
         /* MODAL */
         .modal-overlay {
@@ -504,11 +513,11 @@ PLAYER_TEMPLATE = r"""
                 <span class="time" id="totTime">0:00</span>
             </div>
             <div class="controls">
-                <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать">🔀</button>
-                <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий">⏮</button>
-                <button class="ctrl-btn play-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести">▶</button>
-                <button class="ctrl-btn" onclick="nextTrack()" title="Следующий">⏭</button>
-                <button class="mode-btn" id="btnRepeat" onclick="toggleRepeat()" title="Повтор">🔁</button>
+                <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><img src="/_images/shuffle.svg"></button>
+                <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><img src="/_images/skip_previous.svg"></button>
+                <button class="ctrl-btn play-btn" id="btnPlay" onclick="togglePlay()" title="Воспроизвести"><img id="playIcon" src="/_images/play_circle.svg"></button>
+                <button class="ctrl-btn" onclick="nextTrack()" title="Следующий"><img src="/_images/skip_next.svg"></button>
+                <button class="mode-btn" id="btnRepeat" onclick="toggleRepeat()" title="Повтор"><img id="repeatIcon" src="/_images/repeat.svg"></button>
             </div>
         </div>
     </div>
@@ -664,7 +673,7 @@ PLAYER_TEMPLATE = r"""
             var t = allTracks[idx];
             audio.src = '/music/' + encodeURIComponent(t.file);
             audio.play();
-            document.getElementById('btnPlay').textContent = '⏸';
+            document.getElementById('playIcon').src = '/_images/pause_circle.svg';
             document.getElementById('npTitle').textContent = t.title || t.filename;
             document.getElementById('npArtist').textContent = [t.artist, t.album].filter(Boolean).join(' — ');
             document.getElementById('npFile').textContent = t.file;
@@ -681,10 +690,10 @@ PLAYER_TEMPLATE = r"""
                 connectSource();
                 if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
                 audio.play();
-                document.getElementById('btnPlay').textContent = '⏸';
+                document.getElementById('playIcon').src = '/_images/pause_circle.svg';
             } else {
                 audio.pause();
-                document.getElementById('btnPlay').textContent = '▶';
+                document.getElementById('playIcon').src = '/_images/play_circle.svg';
             }
         }
 
@@ -718,7 +727,7 @@ PLAYER_TEMPLATE = r"""
             } else if (repeatMode === 2 || playlist.indexOf(currentIdx) < playlist.length - 1) {
                 nextTrack();
             } else {
-                document.getElementById('btnPlay').textContent = '▶';
+                document.getElementById('playIcon').src = '/_images/play_circle.svg';
             }
         });
 
@@ -751,8 +760,9 @@ PLAYER_TEMPLATE = r"""
         function toggleRepeat() {
             repeatMode = (repeatMode + 1) % 3;
             var btn = document.getElementById('btnRepeat');
+            var icon = document.getElementById('repeatIcon');
             btn.classList.toggle('active', repeatMode > 0);
-            btn.textContent = repeatMode === 1 ? '🔂' : '🔁';
+            icon.src = repeatMode === 1 ? '/_images/replay.svg' : '/_images/repeat.svg';
             btn.title = ['Повтор выкл', 'Повтор трека', 'Повтор списка'][repeatMode];
         }
 
