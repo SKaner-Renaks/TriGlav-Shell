@@ -47,7 +47,6 @@ _lang_cache = {}
 module_order_cfg = dict(config['module_order']) if 'module_order' in config else {}
 MODULE_ORDER = [m.strip() for m in module_order_cfg.get('order', '').split(',') if m.strip()]
 
-load_log_enabled()
 
 autostart_cfg = dict(config['modules_auto_start']) if 'modules_auto_start' in config else {}
 AUTOSTART_USUAL = autostart_cfg.get('usual', 'all')
@@ -241,6 +240,13 @@ def discover_modules():
 module_log_enabled = {}
 
 
+def load_config():
+    """Load config.cfg fresh from disk"""
+    cfg = configparser.ConfigParser()
+    cfg.read(CONFIG_PATH, encoding='utf-8')
+    return cfg
+
+
 def load_log_enabled():
     """Load log enabled states from config.cfg"""
     cfg = load_config()
@@ -258,6 +264,9 @@ def save_log_enabled():
         cfg.set('log_enabled', name, str(enabled).lower())
     with open(CONFIG_PATH, 'w', encoding='utf-8') as f:
         cfg.write(f)
+
+
+load_log_enabled()
 
 
 def start_module(manifest):
