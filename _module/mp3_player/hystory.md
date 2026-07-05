@@ -58,3 +58,8 @@
 - bars_gradient.js — вынесен из main.py как первый эквалайзер
 - AGENTS.md для эквалайзеров (правила создания)
 - API: /api/settings, /api/equalizers, /_equalizer/<name>.js
+
+## v1.0.8
+- Fix: EQ загрузка через script tag + window.draw (eval не работал в scope)
+- Proxy маршрут /module-equalizer/ в Shell для загрузки EQ через прокси
+- Обновлены все версии и документация

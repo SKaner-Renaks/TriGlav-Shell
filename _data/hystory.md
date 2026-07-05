@@ -88,3 +88,7 @@
 
 ## v1.5.1
 - **Фикс JS синтаксиса**: исправлена лишняя `}` в `selectModule()` (строка 950) и лишний код в `postMessage` обработчике
+
+## v1.5.2
+- **Proxy маршруты для MP3 Player**: `/module-music/<name>/<path>`, `/module-cover/<name>/<path>`, `/module-equalizer/<name>/<path>`
+- Проксируют запросы музыки, обложек и эквалайзеров от модулей через Shell

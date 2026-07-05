@@ -50,14 +50,14 @@ _module/             Автообнаружение модулей
   invaders/          Космические захватчики (port 5004) v1.2    type=game
   snake/             Змейка              (port 5007)   v1.2     type=game
   flip_clock/        Flip Clock          (port 5042)   v1.1     type=game
-  mp3_player/        MP3 Player          (port 5009)   v1.0     type=game
+  mp3_player/        MP3 Player          (port 5009)   v1.0.8  type=game
   smb_explorer/      SMB Explorer        (port 5006)   v3.2     type=usual
   _deps_checker/     Проверка зависимостей (port 5000) v1.2.2  type=service
   _module_manager/   Управление модулями (port 5001)   v1.3.8  type=service (requires_admin)
   _updater/          Обновления из GitHub (port 5002)  v1.4.1  type=service
 ```
 
-> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.0'`, но HANDOFF.md и этот файл указывают `1.5.1`. Синхронизировать при следующем коммите.
+> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.2'`.
 
 ## Типы модулей
 

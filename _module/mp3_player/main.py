@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.7'
+VERSION = '1.0.8'
 
 app = Flask(__name__)
 

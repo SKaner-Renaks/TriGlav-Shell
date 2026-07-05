@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.5.0'
+VERSION = '1.5.2'
 
 app = Flask(__name__)
 
