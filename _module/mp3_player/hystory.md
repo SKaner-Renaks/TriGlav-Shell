@@ -63,3 +63,10 @@
 - Fix: EQ загрузка через script tag + window.draw (eval не работал в scope)
 - Proxy маршрут /module-equalizer/ в Shell для загрузки EQ через прокси
 - Обновлены все версии и документация
+
+## v1.1
+- Fullscreen для PlayerZone через requestFullscreen() на iframe
+- Fullscreen для PlayList через CSS zone-fullscreen (расширение ширины)
+- Кнопка расширения плейлиста: иконка height.svg повёрнута на 90°, размер 20px
+- Кнопка fullscreen PlayerZone: стиль mode-btn (40px, accent hover)
+- flip_clock SVG скопированы в _images
