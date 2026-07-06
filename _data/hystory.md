@@ -92,3 +92,8 @@
 ## v1.5.2
 - **Proxy маршруты для MP3 Player**: `/module-music/<name>/<path>`, `/module-cover/<name>/<path>`, `/module-equalizer/<name>/<path>`
 - Проксируют запросы музыки, обложек и эквалайзеров от модулей через Shell
+
+## v1.5.3
+- **Port duplicate detection**: при старте Shell проверяет дублирование портов в манифестах модулей — если два модуля имеют одинаковый `current_port`, второму назначается свободный порт через `find_free_port()`
+- **Port availability check**: в production mode дополнительная проверка `is_port_free()` перед запуском — если порт занят внешним процессом, назначается другой
+- **Manifest sync**: разрешённый порт записывается обратно в `manifest.json` при каждом старте
