@@ -569,7 +569,7 @@ PLAYER_TEMPLATE = r"""
             cursor: pointer; padding: 2px; display: flex; transition: color 0.15s;
         }
         .zone-fs-btn:hover { color: var(--text); }
-        .zone-fs-btn svg { width: 16px; height: 16px; }
+        .zone-fs-btn svg { width: 20px; height: 20px; }
         .left.zone-fullscreen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             z-index: 150; border-right: none;
