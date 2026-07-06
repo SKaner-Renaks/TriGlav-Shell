@@ -640,7 +640,7 @@ PLAYER_TEMPLATE = r"""
                 <span class="time" id="totTime">0:00</span>
             </div>
             <div class="controls">
-                <button class="zone-fs-btn" onclick="toggleZoneFS('right')" title="На весь экран"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-270.77h30.77V-212L748-769.23H529.23V-800H800v270.77h-30.77V-748L212-190.77h218.77V-160H160Z"/></svg></button>
+                <button class="mode-btn" onclick="toggleZoneFS('left')" title="На весь экран"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-270.77h30.77V-212L748-769.23H529.23V-800H800v270.77h-30.77V-748L212-190.77h218.77V-160H160Z"/></svg></button>
                 <button class="mode-btn" id="btnEQ" onclick="toggleEQ()" title="Эквалайзер"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M200-200v-232.31h110.77V-200H200Zm224.62 0v-560h110.76v560H424.62Zm224.61 0v-367.69H760V-200H649.23Z"/></svg></button>
                 <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M576.77-200v-30.77h131.54L545.85-393l21.23-22.23 162.15 161.69v-127.15H760V-200H576.77ZM222-200l-22-22.23 507.23-507H576.77V-760H760v180.69h-30.77V-707L222-200Zm166.08-350.69L200-738.54 221.46-760l188.85 187.85-22.23 21.46Z"/></svg></button>
                 <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M269.23-295.38v-369.24H300v369.24h-30.77Zm421.54 0L420.15-480l270.62-184.62v369.24ZM660-480Zm0 125.77v-252.31L474.38-480 660-354.23Z"/></svg></button>
