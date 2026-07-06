@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.5.2'
+VERSION = '1.5.3'
 
 app = Flask(__name__)
 
@@ -1313,13 +1313,13 @@ if __name__ == '__main__':
         manifest_port = m.get('current_port', 0)
         if not manifest_port or manifest_port == 0:
             manifest_port = 5000 + hash(m['name']) % 100
-        if ENVIRONMENT == 'production':
-            if manifest_port not in allocated_ports and is_port_free(manifest_port):
-                port = manifest_port
-            else:
+        if manifest_port not in allocated_ports:
+            if ENVIRONMENT == 'production' and not is_port_free(manifest_port):
                 port = find_free_port(start=5000, exclude=allocated_ports)
+            else:
+                port = manifest_port
         else:
-            port = manifest_port
+            port = find_free_port(start=5000, exclude=allocated_ports)
         module_ports[name] = port
         allocated_ports.add(port)
         manifest_path = os.path.join(m['_path'], 'manifest.json')
