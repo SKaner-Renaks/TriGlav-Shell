@@ -1,7 +1,7 @@
 {
   "name": "mp3_player",
   "title": "MP3 Player",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Музыкальный плеер с эквалайзером и плейлистами",
   "type": "game",
   "requires_admin": false,

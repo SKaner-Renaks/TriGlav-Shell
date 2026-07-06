@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.0.8'
+VERSION = '1.0.9'
 
 app = Flask(__name__)
 
@@ -563,6 +563,22 @@ PLAYER_TEMPLATE = r"""
 
         .empty-msg { color: var(--muted); font-size: 12px; text-align: center; padding: 20px; }
 
+        /* ZONE FULLSCREEN */
+        .zone-fs-btn {
+            background: none; border: none; color: var(--muted);
+            cursor: pointer; padding: 2px; display: flex; transition: color 0.15s;
+        }
+        .zone-fs-btn:hover { color: var(--text); }
+        .zone-fs-btn svg { width: 16px; height: 16px; }
+        .left.zone-fullscreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 150; border-right: none;
+        }
+        .right.zone-fullscreen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 150;
+        }
+
         /* SCROLLBAR */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: var(--bg); }
@@ -594,13 +610,13 @@ PLAYER_TEMPLATE = r"""
     </div>
 
     <div class="main">
-        <div class="left">
+        <div class="left" id="leftPanel">
             <div class="left-section">
                 <h3>Плейлисты <button onclick="showNewPL()">+ Новый</button></h3>
                 <ul class="pl-list" id="plList"></ul>
             </div>
             <div class="left-section" style="padding-top:0;">
-                <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button class="refresh-btn" id="refreshBtn" onclick="refreshTracks()" title="Обновить список"><svg viewBox="0 -960 960 960" fill="currentColor" width="18" height="18"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
+                <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button class="zone-fs-btn" onclick="toggleZoneFS('left')" title="На весь экран"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-270.77h30.77V-212L748-769.23H529.23V-800H800v270.77h-30.77V-748L212-190.77h218.77V-160H160Z"/></svg></button><button class="refresh-btn" id="refreshBtn" onclick="refreshTracks()" title="Обновить список"><svg viewBox="0 -960 960 960" fill="currentColor" width="18" height="18"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button></span></h3>
                 <input class="search-box" id="searchBox" placeholder="Поиск по названию или исполнителю..." oninput="filterTracks()">
             </div>
             <div class="track-list" id="trackList"></div>
@@ -624,6 +640,7 @@ PLAYER_TEMPLATE = r"""
                 <span class="time" id="totTime">0:00</span>
             </div>
             <div class="controls">
+                <button class="zone-fs-btn" onclick="toggleZoneFS('right')" title="На весь экран"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-270.77h30.77V-212L748-769.23H529.23V-800H800v270.77h-30.77V-748L212-190.77h218.77V-160H160Z"/></svg></button>
                 <button class="mode-btn" id="btnEQ" onclick="toggleEQ()" title="Эквалайзер"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M200-200v-232.31h110.77V-200H200Zm224.62 0v-560h110.76v560H424.62Zm224.61 0v-367.69H760V-200H649.23Z"/></svg></button>
                 <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M576.77-200v-30.77h131.54L545.85-393l21.23-22.23 162.15 161.69v-127.15H760V-200H576.77ZM222-200l-22-22.23 507.23-507H576.77V-760H760v180.69h-30.77V-707L222-200Zm166.08-350.69L200-738.54 221.46-760l188.85 187.85-22.23 21.46Z"/></svg></button>
                 <button class="ctrl-btn" onclick="prevTrack()" title="Предыдущий"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M269.23-295.38v-369.24H300v369.24h-30.77Zm421.54 0L420.15-480l270.62-184.62v369.24ZM660-480Zm0 125.77v-252.31L474.38-480 660-354.23Z"/></svg></button>
@@ -934,6 +951,12 @@ PLAYER_TEMPLATE = r"""
             audio.volume = val / 100;
             if (gainNode) gainNode.gain.value = val / 100;
             document.getElementById('volVal').textContent = val;
+        }
+
+        /* ZONE FULLSCREEN */
+        function toggleZoneFS(zone) {
+            var el = document.getElementById(zone === 'left' ? 'leftPanel' : 'rightPanel');
+            el.classList.toggle('zone-fullscreen');
         }
 
         /* EQ MODE */
