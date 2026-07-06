@@ -955,8 +955,16 @@ PLAYER_TEMPLATE = r"""
 
         /* ZONE FULLSCREEN */
         function toggleZoneFS(zone) {
-            var el = document.getElementById(zone === 'left' ? 'leftPanel' : 'rightPanel');
-            el.classList.toggle('zone-fullscreen');
+            if (zone === 'right') {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().catch(function(){});
+                } else {
+                    document.exitFullscreen().catch(function(){});
+                }
+            } else {
+                var el = document.getElementById('leftPanel');
+                el.classList.toggle('zone-fullscreen');
+            }
         }
 
         /* EQ MODE */
