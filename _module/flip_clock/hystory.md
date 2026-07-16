@@ -1,5 +1,9 @@
 # История изменений Flip Clock
 
+## v1.1.1
+- **Dev zone labels**: data-zone на display (1 зона)
+- **Debug tooltip**: hover-подсказки :: flip_clock.zone в development mode
+
 ## v1.0
 - Новый game-модуль Flip Clock
 - Flip-анимация секунд/минут/часов (CSS 3D-transform)

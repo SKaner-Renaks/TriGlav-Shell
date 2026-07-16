@@ -97,30 +97,6 @@
       ]
     },
     {
-      "name": "F$",
-      "path": "F:\\",
-      "description": "Стандартный общий ресурс",
-      "current_users": 0,
-      "is_special": true,
-      "permissions": [
-        {
-          "account": "BUILTIN\\Administrators",
-          "right": 0,
-          "type": 0
-        },
-        {
-          "account": "BUILTIN\\Backup Operators",
-          "right": 0,
-          "type": 0
-        },
-        {
-          "account": "NT AUTHORITY\\INTERACTIVE",
-          "right": 0,
-          "type": 0
-        }
-      ]
-    },
-    {
       "name": "H$",
       "path": "H:\\",
       "description": "Стандартный общий ресурс",
@@ -169,5 +145,5 @@
       ]
     }
   ],
-  "updated_at": "2026-07-04 22:21:38"
+  "updated_at": "2026-07-16 19:01:43"
 }

@@ -3,7 +3,7 @@ import argparse
 import logging
 from flask import Flask, render_template_string
 
-VERSION = '1.2'
+VERSION = '1.2.1'
 
 app = Flask(__name__)
 
@@ -162,7 +162,7 @@ SNAKE_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="game-container" style="position: relative;">
+    <div class="game-container" style="position: relative;" data-zone="snake.game">
         <div class="header">
             <div class="title">Змейка {{ version }}</div>
             <div class="stats">
@@ -176,7 +176,7 @@ SNAKE_TEMPLATE = r"""
                 </div>
             </div>
         </div>
-        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <canvas id="gameCanvas" data-zone="snake.canvas" width="400" height="400"></canvas>
         <div class="game-over" id="gameOver">
             <h2>Игра окончена!</h2>
             <p>Ваш счёт: <span id="finalScore">0</span></p>
@@ -455,6 +455,15 @@ SNAKE_TEMPLATE = r"""
 
         init();
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -462,13 +471,14 @@ SNAKE_TEMPLATE = r"""
 
 @app.route('/')
 def index():
-    return render_template_string(SNAKE_TEMPLATE, version=VERSION)
+    return render_template_string(SNAKE_TEMPLATE, version=VERSION, environment=args.environment)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5003)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

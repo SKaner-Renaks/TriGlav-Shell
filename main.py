@@ -21,7 +21,7 @@ CARE_ENV_PATH = os.path.join(DATA_DIR, 'care.env')
 
 sys.path.insert(0, DATA_DIR)
 
-VERSION = '1.5.3'
+VERSION = '1.5.4'
 
 app = Flask(__name__)
 
@@ -286,6 +286,8 @@ def start_module(manifest):
     host = '127.0.0.1' if ENVIRONMENT == 'production' else '0.0.0.0'
 
     cmd = [sys.executable, main_py, '--host', host, '--port', str(port)]
+    if ENVIRONMENT == 'development':
+        cmd.extend(['--environment', 'development'])
     if module_log_enabled.get(name):
         cmd.append('--log')
     try:
@@ -782,6 +784,15 @@ LOGIN_TEMPLATE = r"""
             event.target.classList.add('active');
         }
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -856,12 +867,12 @@ SHELL_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="top-bar">
+    <div class="top-bar" data-zone="shell.top_bar">
         <div>
-            <h1>TriGlav Shell {{ version }}</h1>
-            <div class="top-bar-info">{{ server_info }}</div>
+            <h1 data-zone="shell.top_bar.title">TriGlav Shell {{ version }}</h1>
+            <div class="top-bar-info" data-zone="shell.top_bar.info">{{ server_info }}</div>
         </div>
-        <div class="top-bar-controls">
+        <div class="top-bar-controls" data-zone="shell.top_bar.controls">
             <span id="headerTime" style="font-size:18px;color:#47a8ff;font-weight:600;margin-right:12px;"></span>
             <button class="btn btn-default" onclick="openSettings()" title="Settings"><img src="/_images/gear-svgrepo-com.svg" style="width:16px;height:16px;vertical-align:middle;filter:invert(1);"></button>
             <a href="/logout" class="btn btn-default" style="text-decoration:none;text-align:center;">Logout</a>
@@ -873,13 +884,13 @@ SHELL_TEMPLATE = r"""
     </div>
 
     <div class="workspace">
-        <div id="sidebar">
-            <h3>Modules</h3>
-            <div id="module-list"></div>
+        <div id="sidebar" data-zone="shell.sidebar">
+            <h3 data-zone="shell.sidebar.header">Modules</h3>
+            <div id="module-list" data-zone="shell.sidebar.list"></div>
         </div>
-        <div id="divider"></div>
-        <div id="content">
-            <div id="content-header" style="display:none;">
+        <div id="divider" data-zone="shell.divider"></div>
+        <div id="content" data-zone="shell.content">
+            <div id="content-header" style="display:none;" data-zone="shell.content.header">
                 <span id="module-name"></span>
                 <span class="port" id="module-port"></span>
                 {% if environment == 'development' %}<span id="module-info" style="font-size:13px;color:#999;margin-left:12px;"></span>{% endif %}
@@ -893,13 +904,13 @@ SHELL_TEMPLATE = r"""
                 <button class="btn btn-sm btn-default" onclick="openLog()">Log File</button>
                 {% endif %}
             </div>
-            <iframe id="module-frame" style="display:none;"></iframe>
-            <div id="placeholder">Select a module</div>
+            <iframe id="module-frame" style="display:none;" data-zone="shell.content.frame"></iframe>
+            <div id="placeholder" data-zone="shell.content.placeholder">Select a module</div>
         </div>
     </div>
 
-    <div class="settings-overlay" id="settingsOverlay">
-        <div class="settings-panel">
+    <div class="settings-overlay" id="settingsOverlay" data-zone="shell.settings">
+        <div class="settings-panel" data-zone="shell.settings.panel">
             <div class="settings-header">
                 <h3>Settings</h3>
                 <button class="modal-close" onclick="closeSettings()" style="background:none;border:none;color:#999;font-size:20px;cursor:pointer;">&times;</button>
@@ -1283,6 +1294,14 @@ SHELL_TEMPLATE = r"""
             }
         });
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
 </body>
 </html>
 """

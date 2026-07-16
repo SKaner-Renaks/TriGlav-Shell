@@ -1,11 +1,11 @@
 {
   "name": "monitor",
   "title": "Мониторинг сервера",
-  "version": "1.5",
+  "version": "1.5.1",
   "description": "Мониторинг CPU, RAM, GPU, дисков и сети",
   "type": "usual",
   "requires_admin": false,
-  "current_port": 5001,
+  "current_port": 5005,
   "languages": [
     "ru",
     "en"

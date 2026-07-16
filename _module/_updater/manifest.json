@@ -1,11 +1,11 @@
 {
   "name": "updater",
   "title": "Обновления",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Обновление и установка модулей из GitHub",
   "type": "service",
   "requires_admin": false,
-  "current_port": 5009,
+  "current_port": 5002,
   "languages": [
     "ru",
     "en"

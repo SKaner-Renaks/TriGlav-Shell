@@ -10,7 +10,7 @@ from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 import psutil
 
-VERSION = '1.5'
+VERSION = '1.5.1'
 
 app = Flask(__name__)
 
@@ -401,7 +401,7 @@ DASHBOARD_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="monitor.header">
         <div>
             <h1>Monitor {{ version }}</h1>
             <div class="header-info" id="serverInfo">{{ description }}</div>
@@ -409,7 +409,7 @@ DASHBOARD_TEMPLATE = r"""
         <div class="controls"></div>
     </div>
     <div class="content">
-        <div id="sysInfoBar" style="background:#262626;border:1px solid #404040;border-radius:3px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#999;display:flex;justify-content:space-between;align-items:center;">
+        <div id="sysInfoBar" data-zone="monitor.sys_info" style="background:#262626;border:1px solid #404040;border-radius:3px;padding:8px 14px;margin-bottom:12px;font-size:12px;color:#999;display:flex;justify-content:space-between;align-items:center;">
             <span id="sysInfoText">Loading...</span>
             <button class="btn btn-default btn-sm" onclick="showAllInfo()">All Info</button>
         </div>
@@ -429,35 +429,35 @@ DASHBOARD_TEMPLATE = r"""
                         <div style="margin-bottom:4px;">
                             <select id="cpuSelect" style="background:#1a1a1a;border:1px solid #404040;color:#f2f2f2;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;width:100%;max-width:180px;" onchange="selectedCpu=this.value"></select>
                         </div>
-                        <div class="chart-container"><canvas id="cpuChart"></canvas></div>
+                        <div class="chart-container"><canvas id="cpuChart" data-zone="monitor.cpu_chart"></canvas></div>
                         <div id="cpuLabel" style="text-align:center;font-size:11px;color:#f2f2f2;margin-top:4px;">CPU</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="margin-bottom:4px;">
                             <select style="background:#1a1a1a;border:1px solid #404040;color:transparent;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;width:100%;max-width:180px;pointer-events:none;"><option>-</option></select>
                         </div>
-                        <div class="chart-container"><canvas id="memChart"></canvas></div>
+                        <div class="chart-container"><canvas id="memChart" data-zone="monitor.mem_chart"></canvas></div>
                         <div id="memLabel" style="text-align:center;font-size:11px;color:#f2f2f2;margin-top:4px;">Memory</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="margin-bottom:4px;">
                             <select id="gpuSelect" style="background:#1a1a1a;border:1px solid #404040;color:#f2f2f2;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;width:100%;max-width:180px;" onchange="selectedGpu=this.value"></select>
                         </div>
-                        <div class="chart-container"><canvas id="gpuChart"></canvas></div>
+                        <div class="chart-container"><canvas id="gpuChart" data-zone="monitor.gpu_chart"></canvas></div>
                         <div id="gpuLabel" style="text-align:center;font-size:11px;color:#f2f2f2;margin-top:4px;">GPU</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="margin-bottom:4px;">
                             <select style="background:#1a1a1a;border:1px solid #404040;color:transparent;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;width:100%;max-width:180px;pointer-events:none;"><option>-</option></select>
                         </div>
-                        <div class="chart-container"><canvas id="vramChart"></canvas></div>
+                        <div class="chart-container"><canvas id="vramChart" data-zone="monitor.vram_chart"></canvas></div>
                         <div id="vramLabel" style="text-align:center;font-size:11px;color:#f2f2f2;margin-top:4px;">VRAM</div>
                     </div>
                     <div style="flex:1;min-width:0;">
                         <div style="margin-bottom:4px;">
                             <select id="nicSelect" style="background:#1a1a1a;border:1px solid #404040;color:#f2f2f2;border-radius:3px;padding:2px 6px;font-size:10px;font-family:inherit;width:100%;max-width:180px;" onchange="updateNetLabel()"></select>
                         </div>
-                        <div class="chart-container"><canvas id="netChart"></canvas></div>
+                        <div class="chart-container"><canvas id="netChart" data-zone="monitor.net_chart"></canvas></div>
                         <div id="netLabel" style="text-align:center;font-size:11px;color:#f2f2f2;margin-top:4px;">Network</div>
                     </div>
                 </div>
@@ -469,11 +469,11 @@ DASHBOARD_TEMPLATE = r"""
                 <span>Disk Usage</span>
                 <button class="btn btn-default btn-sm" onclick="loadDisks()">Refresh</button>
             </div>
-            <div class="panel-body" id="diskList"><div class="loading">Loading...</div></div>
+            <div class="panel-body" id="diskList" data-zone="monitor.disk_list"><div class="loading">Loading...</div></div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="smartModal">
+    <div class="modal-overlay" id="smartModal" data-zone="monitor.modal.smart">
         <div class="modal">
             <div class="modal-header">
                 <h3>S.M.A.R.T Data</h3>
@@ -483,7 +483,7 @@ DASHBOARD_TEMPLATE = r"""
         </div>
     </div>
 
-    <div class="modal-overlay" id="allInfoModal">
+    <div class="modal-overlay" id="allInfoModal" data-zone="monitor.modal.all_info">
         <div class="modal" style="width:700px;">
             <div class="modal-header">
                 <h3>All System Info</h3>
@@ -658,7 +658,7 @@ DASHBOARD_TEMPLATE = r"""
                 html += '<div class="info-label">Interface</div><div class="info-value">'+(d.Interface||'N/A')+'</div>';
                 html += '</div>';
                 if (d.Attributes && d.Attributes.length > 0) {
-                    html += '<table class="smart-table"><thead><tr><th>ID</th><th>Value</th><th>Worst</th><th>Threshold</th></tr></thead><tbody>';
+                    html += '<table class="smart-table" data-zone="monitor.smart_table"><thead><tr><th>ID</th><th>Value</th><th>Worst</th><th>Threshold</th></tr></thead><tbody>';
                     d.Attributes.forEach(a => { html += '<tr><td>'+a.ID+'</td><td>'+a.Value+'</td><td>'+a.Worst+'</td><td>'+a.Threshold+'</td></tr>'; });
                     html += '</tbody></table>';
                 }
@@ -767,6 +767,15 @@ DASHBOARD_TEMPLATE = r"""
             }
         });
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -782,7 +791,7 @@ def index():
         description = manifest.get('description', '')
     except Exception:
         pass
-    return render_template_string(DASHBOARD_TEMPLATE, version=VERSION, description=description)
+    return render_template_string(DASHBOARD_TEMPLATE, version=VERSION, description=description, environment=args.environment)
 
 
 @app.route('/api/system')
@@ -826,6 +835,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5001)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

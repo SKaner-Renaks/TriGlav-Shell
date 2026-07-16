@@ -1,11 +1,11 @@
 {
   "name": "snake",
   "title": "Змейка",
-  "version": "1.2",
+  "version": "1.2.1",
   "description": "Классическая змейка с бонусами",
   "type": "game",
   "requires_admin": false,
-  "current_port": 5006,
+  "current_port": 5007,
   "languages": [
     "ru",
     "en"

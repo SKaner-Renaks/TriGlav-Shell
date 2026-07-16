@@ -9,7 +9,7 @@ import configparser
 import requests
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.3.8'
+VERSION = '1.3.9'
 
 app = Flask(__name__)
 
@@ -195,7 +195,7 @@ MANAGER_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="module_manager.header">
         <div>
             <h1>Модули {{ version }}</h1>
             <div class="header-info">Управление модулями оболочки</div>
@@ -220,7 +220,7 @@ MANAGER_TEMPLATE = r"""
                     <thead>
                         <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
-                    <tbody id="serviceModules"></tbody>
+                    <tbody id="serviceModules" data-zone="module_manager.service_modules"></tbody>
                 </table>
             </div>
         </div>
@@ -232,7 +232,7 @@ MANAGER_TEMPLATE = r"""
                     <thead>
                         <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
-                    <tbody id="usualModules"></tbody>
+                    <tbody id="usualModules" data-zone="module_manager.usual_modules"></tbody>
                 </table>
             </div>
         </div>
@@ -244,14 +244,14 @@ MANAGER_TEMPLATE = r"""
                     <thead>
                         <tr><th class="col-name">Модуль</th><th class="col-ver">Версия</th><th class="col-desc">Описание</th><th class="col-port">Порт</th><th class="col-toggle">Включён</th><th class="col-actions">Перезапуск</th><th class="col-delete">Удалить</th></tr>
                     </thead>
-                    <tbody id="gameModules"></tbody>
+                    <tbody id="gameModules" data-zone="module_manager.game_modules"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
     <!-- Модальное окно подтверждения удаления сервисного модуля -->
-    <div class="modal-overlay" id="deleteModal">
+    <div class="modal-overlay" id="deleteModal" data-zone="module_manager.modal.delete">
         <div class="modal-panel">
             <div class="modal-header">
                 <h3>Удаление сервисного модуля</h3>
@@ -500,6 +500,15 @@ MANAGER_TEMPLATE = r"""
 
         loadModules();
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -507,7 +516,7 @@ MANAGER_TEMPLATE = r"""
 
 @app.route('/')
 def index():
-    return render_template_string(MANAGER_TEMPLATE, version=VERSION)
+    return render_template_string(MANAGER_TEMPLATE, version=VERSION, environment=args.environment)
 
 
 @app.route('/api/modules_list')
@@ -596,6 +605,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

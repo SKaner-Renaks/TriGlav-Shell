@@ -7,7 +7,7 @@ import configparser
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request, send_from_directory
 
-VERSION = '1.1'
+VERSION = '1.1.1'
 
 app = Flask(__name__)
 
@@ -78,7 +78,7 @@ def read_tags(filepath):
 def index():
     theme = get_theme()
     mc = get_module_config()
-    return render_template_string(PLAYER_TEMPLATE, version=VERSION, theme=theme,
+    return render_template_string(PLAYER_TEMPLATE, version=VERSION, theme=theme, environment=args.environment,
                                   blur=mc.getint('player', 'blur', fallback=13),
                                   volume=mc.getint('player', 'volume', fallback=80),
                                   equalizer=mc.get('player', 'equalizer', fallback='bars_gradient'))
@@ -587,7 +587,7 @@ PLAYER_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="mp3_player.header">
         <h1>MP3 Player {{ version }}</h1>
         <div class="header-controls">
             <div class="vol-wrap">
@@ -609,8 +609,8 @@ PLAYER_TEMPLATE = r"""
         </div>
     </div>
 
-    <div class="main">
-        <div class="left" id="leftPanel">
+    <div class="main" data-zone="mp3_player.main">
+        <div class="left" id="leftPanel" data-zone="mp3_player.track_list">
             <div class="left-section">
                 <h3>Плейлисты <button onclick="showNewPL()">+ Новый</button></h3>
                 <ul class="pl-list" id="plList"></ul>
@@ -619,27 +619,27 @@ PLAYER_TEMPLATE = r"""
                 <h3>Треки <span style="display:flex;align-items:center;gap:6px;"><span id="trackCount"></span><button class="refresh-btn" id="refreshBtn" onclick="refreshTracks()" title="Обновить список"><svg viewBox="0 -960 960 960" fill="currentColor" width="18" height="18"><path d="M483.32-200q-116.49 0-198.37-81.84-81.87-81.84-81.87-198.04 0-116.2 81.87-198.16Q366.83-760 483.08-760q78.84 0 141.3 36.81 62.47 36.81 101.77 100.65V-760h30.77v197.08H559.85v-30.77h148q-34.16-61.54-92.39-98.54-58.23-37-132.38-37-104.52 0-176.87 72.33-72.36 72.33-72.36 176.81 0 104.47 72.44 176.9 72.44 72.42 177.07 72.42 79.64 0 144.79-45.58 65.16-45.57 91.39-120.5h32Q724.85-308 650.61-254q-74.24 54-167.29 54Z"/></svg></button><button class="zone-fs-btn" onclick="toggleZoneFS('left')" title="Расширить ширину Плейлиста"><svg viewBox="0 -960 960 960" fill="currentColor" transform="rotate(90)"><path d="M479.23-160 347.69-291.54l21.23-21.23 94.93 93.15v-521.53l-94.16 93.92-21.23-21.23L480-800l131.54 131.54-22.23 22.23-94.69-94.15v520.76l94.92-93.15 21.23 21.23L479.23-160Z"/></svg></button></span></h3>
                 <input class="search-box" id="searchBox" placeholder="Поиск по названию или исполнителю..." oninput="filterTracks()">
             </div>
-            <div class="track-list" id="trackList"></div>
+            <div class="track-list" id="trackList" data-zone="mp3_player.tracks"></div>
         </div>
-        <div class="right" id="rightPanel">
+        <div class="right" id="rightPanel" data-zone="mp3_player.player_panel">
             <div class="bg-blur" id="bgBlur"></div>
-            <div class="cover-wrap">
+            <div class="cover-wrap" data-zone="mp3_player.cover">
                 <img id="npCover" src="/_images/default_cover.png" alt="Cover">
             </div>
-            <div class="np-info">
+            <div class="np-info" data-zone="mp3_player.now_playing">
                 <div class="np-title" id="npTitle">—</div>
                 <div class="np-artist" id="npArtist"></div>
                 <div class="np-file" id="npFile"></div>
             </div>
-            <div class="eq-wrap"><canvas id="eqCanvas"></canvas></div>
-            <div class="progress-wrap">
+            <div class="eq-wrap" data-zone="mp3_player.equalizer"><canvas id="eqCanvas" data-zone="mp3_player.eq_canvas"></canvas></div>
+            <div class="progress-wrap" data-zone="mp3_player.progress">
                 <span class="time" id="curTime">0:00</span>
                 <div class="progress-bar" id="progBar" onclick="seek(event)">
                     <div class="progress-fill" id="progFill"></div>
                 </div>
                 <span class="time" id="totTime">0:00</span>
             </div>
-            <div class="controls">
+            <div class="controls" data-zone="mp3_player.controls">
                 <button class="mode-btn" onclick="toggleZoneFS('right')" title="На весь экран"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M160-160v-270.77h30.77V-212L748-769.23H529.23V-800H800v270.77h-30.77V-748L212-190.77h218.77V-160H160Z"/></svg></button>
                 <button class="mode-btn" id="btnEQ" onclick="toggleEQ()" title="Эквалайзер"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M200-200v-232.31h110.77V-200H200Zm224.62 0v-560h110.76v560H424.62Zm224.61 0v-367.69H760V-200H649.23Z"/></svg></button>
                 <button class="mode-btn" id="btnShuffle" onclick="toggleShuffle()" title="Перемешать"><svg viewBox="0 -960 960 960" fill="currentColor"><path d="M576.77-200v-30.77h131.54L545.85-393l21.23-22.23 162.15 161.69v-127.15H760V-200H576.77ZM222-200l-22-22.23 507.23-507H576.77V-760H760v180.69h-30.77V-707L222-200Zm166.08-350.69L200-738.54 221.46-760l188.85 187.85-22.23 21.46Z"/></svg></button>
@@ -651,7 +651,7 @@ PLAYER_TEMPLATE = r"""
         </div>
     </div>
 
-    <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal-overlay" id="modalOverlay" data-zone="mp3_player.modal.playlist" onclick="if(event.target===this)closeModal()">
         <div class="modal">
             <h3>Новый плейлист</h3>
             <input id="plNameInput" placeholder="Название плейлиста..." onkeydown="if(event.key==='Enter')saveNewPL()">
@@ -1063,6 +1063,15 @@ PLAYER_TEMPLATE = r"""
         setVolume({{ volume }});
         init();
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -1072,6 +1081,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5009)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

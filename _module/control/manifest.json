@@ -1,19 +1,19 @@
 {
-    "name":  "control",
-    "title":  "Панель управления",
-    "version":  "1.5",
-    "description":  "PowerShell-консоль и файловый браузер",
-    "type":  "usual",
-    "requires_admin":  true,
-    "current_port":  5003,
-    "languages":  [
-                      "ru",
-                      "en"
-                  ],
-    "current_settings":  {
-                             "refresh_interval":  5
-                         },
-    "default_settings":  {
-                             "refresh_interval":  5
-                         }
+  "name": "control",
+  "title": "Панель управления",
+  "version": "1.5.1",
+  "description": "PowerShell-консоль и файловый браузер",
+  "type": "usual",
+  "requires_admin": true,
+  "current_port": 5003,
+  "languages": [
+    "ru",
+    "en"
+  ],
+  "current_settings": {
+    "refresh_interval": 5
+  },
+  "default_settings": {
+    "refresh_interval": 5
+  }
 }

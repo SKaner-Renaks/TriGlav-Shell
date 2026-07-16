@@ -10,7 +10,7 @@ import argparse
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '2.4.6'
+VERSION = '2.4.7'
 
 app = Flask(__name__)
 
@@ -395,7 +395,7 @@ def index():
         description = manifest.get('description', '')
     except Exception:
         pass
-    return render_template_string(HTML_TEMPLATE, version=VERSION, description=description, refresh_interval=15)
+    return render_template_string(HTML_TEMPLATE, version=VERSION, description=description, refresh_interval=15, environment=args.environment)
 
 
 @app.route('/api/tasks')
@@ -601,7 +601,7 @@ HTML_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="task_scheduler.header">
         <div>
             <h1>Task Scheduler {{ version }}</h1>
             <div class="header-info" id="serverInfo">{{ description }}</div>
@@ -610,7 +610,7 @@ HTML_TEMPLATE = r"""
             <button class="btn btn-primary" onclick="refreshTasks()">Refresh</button>
         </div>
     </div>
-    <div class="toolbar">
+    <div class="toolbar" data-zone="task_scheduler.toolbar">
         <div class="toolbar-group">
             <span id="autoIndicator" class="auto-indicator"></span>
             <label>Auto-refresh:</label>
@@ -642,8 +642,8 @@ HTML_TEMPLATE = r"""
     </div>
 
     <div class="content">
-        <div class="stats" id="stats"></div>
-        <div class="crud-toolbar">
+        <div class="stats" id="stats" data-zone="task_scheduler.stats"></div>
+        <div class="crud-toolbar" data-zone="task_scheduler.crud_toolbar">
             <button class="btn btn-success" onclick="openCreateModal()">Add</button>
             <button class="btn btn-primary" id="btnEdit" disabled onclick="openEditModal()">Edit</button>
             <button class="btn btn-default" id="btnCopy" disabled onclick="openCopyModal()">Copy</button>
@@ -652,8 +652,8 @@ HTML_TEMPLATE = r"""
             <span style="margin-left:24px"></span>
             <button class="btn btn-default" onclick="toggleFilter()">Hide/Show</button>
         </div>
-        <div class="task-table-container">
-            <table class="task-table">
+        <div class="task-table-container" data-zone="task_scheduler.table">
+            <table class="task-table" data-zone="task_scheduler.task_table">
                 <thead>
                     <tr>
                         <th>Task Name</th>
@@ -671,7 +671,7 @@ HTML_TEMPLATE = r"""
         <div id="footer" style="font-size:11px;color:#666;margin-top:8px;"></div>
     </div>
 
-    <div class="modal-overlay" id="taskModal">
+    <div class="modal-overlay" id="taskModal" data-zone="task_scheduler.modal.create">
         <div class="modal">
             <div class="modal-header">
                 <h3 id="modalTitle">Create Task</h3>
@@ -1060,6 +1060,15 @@ HTML_TEMPLATE = r"""
         renderFilterList = function() { origRenderFilter(); };
         setInterval(() => { if (document.getElementById('filterPanel').classList.contains('active')) renderFilterList(); }, 5000);
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -1069,6 +1078,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5000)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

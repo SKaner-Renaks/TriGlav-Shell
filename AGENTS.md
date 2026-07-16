@@ -12,7 +12,7 @@
 - **Зеркало**: `C:\ARS\Mimo\TriGlav-Shell` — односторонняя синхронизация из `C:\ARS\Mimo\Task Server`
 - **Синхронизация**: копировать файлы в зеркало → `git add . && git commit && git push`
 - **Файлы для синхронизации**: `main.py`, `AGENTS.md`, `requirements.txt`, `task.md`, `task_updater.md`, `_data/`, `_module/`
-- **Исключается**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`
+- **Исключается**: `.git/`, `__pycache__/`, `BackUp/`, `_Download/`, `screenshot.PNG`, `*.mp3`
 
 ## Запуск
 
@@ -32,7 +32,7 @@ Start-Process python -ArgumentList '"main.py"' -Verb RunAs
 Shell (Flask, port 8080) управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell           (port 8080)   VERSION = '1.5.1'
+main.py              Ядро Shell           (port 8080)   VERSION = '1.5.4'
 _data/
   config.cfg         Глобальные настройки (INI)
   manifest.json      Манифест Shell
@@ -44,20 +44,20 @@ _data/
   _ps/               PowerShell скрипты Shell
   _images/           SVG-иконки (gear, developer_board)
 _module/             Автообнаружение модулей
-  monitor/           Мониторинг сервера  (port 5005)   v1.5     type=usual
-  task_scheduler/    Планировщик задач   (port 5008)   v2.4.6   type=usual
-  control/           Панель управления   (port 5003)   v1.5     type=usual
-  invaders/          Космические захватчики (port 5004) v1.2    type=game
-  snake/             Змейка              (port 5007)   v1.2     type=game
-  flip_clock/        Flip Clock          (port 5042)   v1.1     type=game
-  mp3_player/        MP3 Player          (port 5009)   v1.1    type=game
-  smb_explorer/      SMB Explorer        (port 5006)   v3.2     type=usual
-  _deps_checker/     Проверка зависимостей (port 5000) v1.2.2  type=service
-  _module_manager/   Управление модулями (port 5001)   v1.3.8  type=service (requires_admin)
-  _updater/          Обновления из GitHub (port 5002)  v1.4.1  type=service
+  monitor/           Мониторинг сервера  (port 5005)   v1.5.1   type=usual
+  task_scheduler/    Планировщик задач   (port 5008)   v2.4.7   type=usual
+  control/           Панель управления   (port 5003)   v1.5.1   type=usual
+  invaders/          Космические захватчики (port 5004) v1.2.1   type=game
+  snake/             Змейка              (port 5007)   v1.2.1   type=game
+  flip_clock/        Flip Clock          (port 5042)   v1.1.1   type=game
+  mp3_player/        MP3 Player          (port 5009)   v1.1.1   type=game
+  smb_explorer/      SMB Explorer        (port 5006)   v3.2.1   type=usual
+  _deps_checker/     Проверка зависимостей (port 5000) v1.2.3   type=service
+  _module_manager/   Управление модулями (port 5001)   v1.3.9   type=service (requires_admin)
+  _updater/          Обновления из GitHub (port 5002)  v1.4.2   type=service
 ```
 
-> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.2'`.
+> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.4'`.
 
 ## Типы модулей
 
@@ -100,7 +100,7 @@ _module/[name]/
 
 ### Требования к модулю
 
-1. Flask-приложение с `argparse`: принимает `--host`, `--port`, опционально `--log`
+1. Flask-приложение с `argparse`: принимает `--host`, `--port`, `--environment production|development`, опционально `--log`
 2. **Без auth** — авторизацию обеспечивает Shell
 3. Тема: Proxmox-style dark (#1a1a1a, #262626, #47a8ff)
 4. `requirements.txt` с зависимостиями (обычно `flask>=3.0`)
@@ -117,6 +117,30 @@ _module/[name]/
 ### Development Block
 
 Блок информации о модуле в content header называется **Development Block** — блок разработчика. Показывает иконку `developer_board.svg` + "Development". Отображает порт модуля, кнопки управления (Restart, Web, Folder, Log). Доступен только в Development mode.
+
+### Development Zone Labels
+
+В режиме `development` каждая UI-зона в Shell и модулях должна иметь атрибут `data-zone="module.zone_name"`. При наведении мыши (после 500ms задержки) появляется floating label `:: module.zone_name`. При движении мыши — исчезает.
+
+**Правила именования зон:**
+- Формат: `{module_name}.{zone}` — lowercase, underscore для пробелов
+- Зоны могут быть вложенные: `module.parent.child.subchild` — чем глубже вложенность, тем длиннее формат
+- Namespace = имя модуля из `manifest.json`. Для Shell = `shell`
+- Примеры: `shell.top_bar`, `monitor.cpu_chart`, `mp3_player.cover`, `smb.tab_files`
+- Примеры вложенных: `task_scheduler.modal.create.confirm`, `smb.tab_files.row.actions`, `shell.settings.panel.auth`
+
+**Обязательные зоны для каждого модуля:**
+- Заголовок: `module.header`
+- Основные панели/блоки: `module.{panel_name}`
+- Таблицы: `module.{table_name}`
+- Модальные окна: `module.modal.{name}`
+- Canvas/game: `module.game`, `module.canvas`
+
+**Реализация:**
+- Shell: `data-zone` на элементах SHELL_TEMPLATE + LOGIN_TEMPLATE, debug snippet в `{% if environment == 'development' %}`
+- Модули: `data-zone` на элементах HTML-шаблона, `--environment` аргумент в argparse, `environment=args.environment` в `render_template_string()`
+- Debug snippet: CSS `.dev-label` + JS с `setTimeout(500ms)`, hide on `mousemove`
+- При добавлении нового UI-элемента — **обязательно** добавлять `data-zone` если элемент является зоной/панелью/таблицей/модалкой
 
 ### Reverse Proxy
 
@@ -184,6 +208,8 @@ Shell и модули хранят HTML-шаблоны прямо в Python-ко
 - **encrypt.py**: только XOR+base64. care.env auto-created с дефолтами admin/admin.
 - **Manifest BOM**: PowerShell `Set-Content -Encoding UTF8` добавляет BOM. Использовать Python или `System.Text.UTF8Encoding $false` для записи JSON без BOM.
 - **Folder button**: `ShellExecuteW` с `SW_SHOWNORMAL` не гарантирует foreground. Использовать `EnumWindows` + `SetForegroundWindow` + `BringWindowToTop`.
+- **Dev zone labels**: при добавлении нового UI-элемента в Development mode — добавлять `data-zone="module.name"` на элемент. Debug snippet автоматически покажет label при наведении.
+- **MP3 файлы**: на GitHub **не выгружать** `*.mp3` файлы. Локально хранятся в `_module/mp3_player/music/`. Добавлено в `.gitignore`.
 
 ## Code Conventions
 

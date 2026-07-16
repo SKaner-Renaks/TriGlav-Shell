@@ -7,7 +7,7 @@ import threading
 from datetime import datetime
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '3.2'
+VERSION = '3.2.1'
 
 app = Flask(__name__)
 
@@ -166,7 +166,7 @@ TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="smb.header">
         <div>
             <h1>SMB Explorer {{ version }}</h1>
             <div class="header-info">Просмотр SMB-ресурсов и открытых файлов</div>
@@ -177,13 +177,13 @@ TEMPLATE = r"""
         </div>
     </div>
     <div class="content">
-        <div class="tabs">
+        <div class="tabs" data-zone="smb.tabs">
             <div class="tab active" onclick="switchTab('shares')">Shares</div>
             <div class="tab" onclick="switchTab('files')">Open Files</div>
             <div class="tab" onclick="switchTab('activity')">Activity</div>
         </div>
 
-        <div id="tab-shares">
+        <div id="tab-shares" data-zone="smb.tab_shares">
             <div class="panel">
                 <div class="panel-header">
                     <span>User Shares</span>
@@ -210,7 +210,7 @@ TEMPLATE = r"""
             </div>
         </div>
 
-        <div id="tab-files" class="panel" style="display:none;">
+        <div id="tab-files" data-zone="smb.tab_files" class="panel" style="display:none;">
             <div class="panel-header">
                 <span>Open Files</span>
                 <span id="filesCount"></span>
@@ -253,12 +253,12 @@ TEMPLATE = r"""
                     <thead>
                         <tr><th><input type="checkbox" id="selectAll" onchange="toggleAll()"></th><th id="pathHeader">File</th><th>Client</th><th>User</th><th>Access</th><th>Lock</th></tr>
                     </thead>
-                    <tbody id="filesBody"></tbody>
+                    <tbody id="filesBody" data-zone="smb.files_tbody"></tbody>
                 </table>
             </div>
         </div>
 
-        <div id="tab-activity" class="panel" style="display:none;">
+        <div id="tab-activity" data-zone="smb.tab_activity" class="panel" style="display:none;">
             <div class="panel-header">
                 <span>User Activity (Top 10)</span>
                 <span id="activityCount"></span>
@@ -293,13 +293,13 @@ TEMPLATE = r"""
                     <thead>
                         <tr><th>User</th><th>Read</th><th>Write</th><th>Total</th></tr>
                     </thead>
-                    <tbody id="activityBody"></tbody>
+                    <tbody id="activityBody" data-zone="smb.activity_tbody"></tbody>
                 </table>
             </div>
         </div>
     </div>
 
-    <div class="modal-overlay" id="loadingModal">
+    <div class="modal-overlay" id="loadingModal" data-zone="smb.modal.loading">
         <div class="modal" style="min-width: 320px; max-width: 500px;">
             <div class="spinner-lg" id="modalSpinner"></div>
             <div class="modal-text" id="loadingText">Scanning SMB shares...</div>
@@ -749,6 +749,15 @@ TEMPLATE = r"""
 
         loadShares();
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -756,7 +765,7 @@ TEMPLATE = r"""
 
 @app.route('/')
 def index():
-    return render_template_string(TEMPLATE, version=VERSION)
+    return render_template_string(TEMPLATE, version=VERSION, environment=args.environment)
 
 
 def get_shares_cached():
@@ -891,6 +900,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5010)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 

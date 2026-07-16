@@ -1,5 +1,9 @@
 # История изменений MP3 Player
 
+## v1.1.1
+- **Dev zone labels**: data-zone на 12 UI-зон (header, main, tracks, cover, now_playing, equalizer, progress, controls, modal)
+- **Debug tooltip**: hover-подсказки :: mp3_player.zone в development mode
+
 ## v1.0
 - Новый game-модуль MP3 Player
 - Воспроизведение MP3 через HTML5 Audio

@@ -10,7 +10,7 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.4.1'
+VERSION = '1.4.2'
 
 app = Flask(__name__)
 
@@ -276,7 +276,7 @@ DOWNLOADER_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="updater.header">
         <div>
             <h1>Обновления {{ version }}</h1>
             <div class="header-info">Управление модулями из GitHub</div>
@@ -289,7 +289,7 @@ DOWNLOADER_TEMPLATE = r"""
         <div id="statusMessage"></div>
 
         <div class="repo-bar">
-            <input type="text" id="repoUrl" value="{{ repo_url }}">
+            <input type="text" id="repoUrl" data-zone="updater.repo_url" value="{{ repo_url }}">
         </div>
 
         <div class="section-title">Установленные объекты</div>
@@ -300,7 +300,7 @@ DOWNLOADER_TEMPLATE = r"""
                     <thead>
                         <tr><th><input type="checkbox" id="checkAllInstalled" onchange="toggleAllInstalled()"></th><th>Type</th><th>Status</th><th>Name</th><th>Title</th><th>Local</th><th>Repo</th><th>Status</th></tr>
                     </thead>
-                    <tbody id="installedBody"></tbody>
+                    <tbody id="installedBody" data-zone="updater.installed_table"></tbody>
                 </table>
             </div>
         </div>
@@ -317,7 +317,7 @@ DOWNLOADER_TEMPLATE = r"""
                     <thead>
                         <tr><th><input type="checkbox" id="checkAllNew" onchange="toggleAllNew()"></th><th>Type</th><th>Name</th><th>Title</th><th>Description</th><th>Repo Ver</th></tr>
                     </thead>
-                    <tbody id="newBody"></tbody>
+                    <tbody id="newBody" data-zone="updater.new_table"></tbody>
                 </table>
             </div>
         </div>
@@ -325,7 +325,7 @@ DOWNLOADER_TEMPLATE = r"""
         <button class="btn btn-primary" id="installBtn" onclick="installSelected()">Установить</button>
     </div>
 
-    <div class="modal-overlay" id="progressModal">
+    <div class="modal-overlay" id="progressModal" data-zone="updater.modal.progress">
         <div class="modal">
             <div class="spinner" id="modalSpinner"></div>
             <div id="progressText">Загрузка...</div>
@@ -595,6 +595,15 @@ DOWNLOADER_TEMPLATE = r"""
             document.getElementById('installBtn').disabled = false;
         }
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -602,7 +611,7 @@ DOWNLOADER_TEMPLATE = r"""
 
 @app.route('/')
 def index():
-    return render_template_string(DOWNLOADER_TEMPLATE, version=VERSION, repo_url=REPO_URL)
+    return render_template_string(DOWNLOADER_TEMPLATE, version=VERSION, repo_url=REPO_URL, environment=args.environment)
 
 
 @app.route('/api/config')
@@ -763,6 +772,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5009)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     args = parser.parse_args()
     print(f"Updater {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)

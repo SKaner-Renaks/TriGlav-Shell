@@ -1,0 +1,5 @@
+# История изменений Task Scheduler
+
+## v2.4.7
+- **Dev zone labels**: data-zone на 7 UI-зон (header, toolbar, stats, crud_toolbar, table, task_table, modal)
+- **Debug tooltip**: hover-подсказки :: task_scheduler.zone в development mode

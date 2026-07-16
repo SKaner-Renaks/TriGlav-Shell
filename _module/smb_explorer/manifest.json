@@ -1,11 +1,11 @@
 {
   "name": "smb_explorer",
   "title": "SMB Explorer",
-  "version": "3.2",
+  "version": "3.2.1",
   "description": "Просмотр SMB-ресурсов и открытых файлов",
   "type": "usual",
   "requires_admin": true,
-  "current_port": 5010,
+  "current_port": 5006,
   "languages": [
     "ru",
     "en"

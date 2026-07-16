@@ -20,7 +20,7 @@ if sys.platform == 'win32':
     except Exception:
         pass
 
-VERSION = '1.2.2'
+VERSION = '1.2.3'
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
@@ -139,7 +139,7 @@ CHECK_TEMPLATE = r"""
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="header" data-zone="deps_checker.header">
         <div>
             <h1>Проверка зависимостей {{ version }}</h1>
             <div class="header-info">Проверка и установка Python пакетов</div>
@@ -164,11 +164,11 @@ CHECK_TEMPLATE = r"""
         <div class="panel">
             <div class="panel-header">Результаты проверки</div>
             <div class="panel-body">
-                <table class="results-table">
+                <table class="results-table" data-zone="deps_checker.results_table">
                     <thead>
                         <tr><th>Модуль</th><th>Пакет</th><th>Требуется</th><th>Установлен</th><th>Статус</th></tr>
                     </thead>
-                    <tbody id="resultsBody">
+                    <tbody id="resultsBody" data-zone="deps_checker.results_table">
                         <tr><td colspan="5" style="text-align:center;color:#999;">Нажмите "Проверить" для начала</td></tr>
                     </tbody>
                 </table>
@@ -291,6 +291,15 @@ CHECK_TEMPLATE = r"""
 
         loadModules();
     </script>
+{% if environment == 'development' %}
+<style>
+.dev-label{position:fixed;background:rgba(0,0,0,.88);color:#47a8ff;font:600 10px/1.2 "Cascadia Mono","Consolas",monospace;padding:2px 8px;border-radius:0 0 4px 0;z-index:99999;pointer-events:none;white-space:nowrap;display:none}
+</style>
+<script>
+(function(){var l=document.createElement("div");l.className="dev-label";document.body.appendChild(l);var timer=null,currentZone=null,mx=0,my=0;function showLabel(z){l.textContent=":: "+z.getAttribute("data-zone");l.style.left=mx+12+"px";l.style.top=my+12+"px";l.style.display="block"}function hideLabel(){l.style.display="none"}function startTimer(z){clearTimeout(timer);timer=setTimeout(function(){if(currentZone===z)showLabel(z)},500)}document.addEventListener("mouseover",function(e){var z=e.target.closest("[data-zone]");if(z){currentZone=z;hideLabel();startTimer(z)}});document.addEventListener("mouseout",function(e){var z=e.target.closest("[data-zone]");if(z){clearTimeout(timer);currentZone=null;hideLabel()}});document.addEventListener("mousemove",function(e){mx=e.clientX;my=e.clientY;if(l.style.display==="block"){hideLabel();if(currentZone)startTimer(currentZone)}});})();
+</script>
+{% endif %}
+
 </body>
 </html>
 """
@@ -346,7 +355,7 @@ def web_mode(host, port):
 
     @app.route('/')
     def index():
-        return render_template_string(CHECK_TEMPLATE, version=VERSION)
+        return render_template_string(CHECK_TEMPLATE, version=VERSION, environment=args.environment)
 
     @app.route('/api/requirements')
     def api_requirements():
@@ -408,6 +417,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=5007)
+    parser.add_argument('--environment', default='production', choices=['production', 'development'])
     parser.add_argument('--log', action='store_true')
     args = parser.parse_args()
 
