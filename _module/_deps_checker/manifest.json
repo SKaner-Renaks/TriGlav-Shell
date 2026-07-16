@@ -11,5 +11,6 @@
     "en"
   ],
   "current_settings": {},
-  "default_settings": {}
+  "default_settings": {},
+  "mode": "development"
 }

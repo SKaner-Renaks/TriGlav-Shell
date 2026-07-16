@@ -15,5 +15,6 @@
   },
   "default_settings": {
     "refresh_interval": 0
-  }
+  },
+  "mode": "development"
 }

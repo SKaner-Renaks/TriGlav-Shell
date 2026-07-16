@@ -17,5 +17,6 @@
   "default_settings": {
     "auth_mode": "both",
     "environment": "production"
-  }
+  },
+  "mode": "development"
 }
