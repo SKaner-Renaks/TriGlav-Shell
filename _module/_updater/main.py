@@ -42,15 +42,6 @@ if args.log:
     log.info('Updater %s started', VERSION)
 
 
-def setup_log():
-    log_path = os.path.join(BASE_DIR, 'updater.log')
-    fh = logging.FileHandler(log_path, encoding='utf-8')
-    fh.setLevel(logging.DEBUG)
-    fmt = logging.Formatter('%(asctime)s [%(levelname)s] %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
-    fh.setFormatter(fmt)
-    log.addHandler(fh)
-
-
 def load_config():
     cfg = configparser.ConfigParser()
     cfg.read(os.path.join(SHELL_DIR, '_data', 'config.cfg'), encoding='utf-8')
