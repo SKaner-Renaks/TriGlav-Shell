@@ -1,30 +1,30 @@
 # HANDOFF — TriGlav Shell Project Session
-**Дата**: 2026-07-05
-**Сессия**: ses_0cd849e14ffeD4VNRWi1RkcvCR
+**Дата**: 2026-07-16
+**Сессия**: ses_094ad0bfaffe5u5vXNRANRKQV6
 
 ---
 
 ## 1. Текущая версия
 
-- **Shell**: v1.5.2
-- **module_manager**: v1.3.8
-- **task_scheduler**: v2.4.6
-- **control**: v1.5
-- **monitor**: v1.5
-- **invaders**: v1.2
-- **snake**: v1.2
-- **flip_clock**: v1.1
-- **mp3_player**: v1.0.8
-- **smb_explorer**: v3.2
-- **deps_checker**: v1.2.2
-- **updater**: v1.4.1
+- **Shell**: v1.5.5
+- **module_manager**: v1.4.0
+- **task_scheduler**: v2.4.8
+- **control**: v1.5.2
+- **monitor**: v1.5.2
+- **invaders**: v1.2.2
+- **snake**: v1.2.2
+- **flip_clock**: v1.1.2
+- **mp3_player**: v1.1.2
+- **smb_explorer**: v3.2.2
+- **deps_checker**: v1.2.4
+- **updater**: v1.4.9
 
 ## 2. Архитектура проекта
 
 ### Структура каталогов
 ```
 C:\ARS\Mimo\Task Server\
-├── main.py              Ядро Shell (port 8080) v1.5.2
+├── main.py              Ядро Shell (port 8080) v1.5.5
 ├── AGENTS.md            Документация для AI
 ├── HANDOFF.md           Передача сессии
 ├── task.md              ТЗ проекта
@@ -42,22 +42,23 @@ C:\ARS\Mimo\Task Server\
 │   │   ├── ru.json      Русская локализация
 │   │   └── en.json      Английская локализация
 │   ├── _images\
-│   │   ├── gear-svgrepo-com.svg
+│   │   ├── gear.svg
 │   │   └── developer_board.svg
+│   │   └── frame_bug.svg
 │   └── _ps\
 │       └── _check_fw.ps1
 └── _module\
-    ├── monitor\         Мониторинг сервера (port 5005) v1.5
-    ├── task_scheduler\  Планировщик задач (port 5008) v2.4.6
-    ├── control\         Панель управления (port 5003) v1.5
-    ├── invaders\        Космические захватчики (port 5004) v1.2
-    ├── snake\           Змейка (port 5007) v1.2
-    ├── flip_clock\      Flip Clock (port 5042) v1.1
-    ├── mp3_player\      MP3 Player (port 5009) v1.0.8
-    ├── smb_explorer\    SMB Explorer (port 5006) v3.2
-    ├── _deps_checker\   Проверка зависимостей (port 5000) v1.2.2
-    ├── _module_manager\ Управление модулями (port 5001) v1.3.8
-    └── _updater\        Обновления из GitHub (port 5002) v1.4.1
+    ├── monitor\         Мониторинг сервера (port 5005) v1.5.2
+    ├── task_scheduler\  Планировщик задач (port 5008) v2.4.8
+    ├── control\         Панель управления (port 5003) v1.5.2
+    ├── invaders\        Космические захватчики (port 5004) v1.2.2
+    ├── snake\           Змейка (port 5007) v1.2.2
+    ├── flip_clock\      Flip Clock (port 5042) v1.1.2
+    ├── mp3_player\      MP3 Player (port 5009) v1.1.2
+    ├── smb_explorer\    SMB Explorer (port 5006) v3.2.2
+    ├── _deps_checker\   Проверка зависимостей (port 5000) v1.2.4
+    ├── _module_manager\ Управление модулями (port 5001) v1.4.0
+    └── _updater\        Обновления и Бекапы (port 5002) v1.4.9
 ```
 
 ## 3. Окружение
@@ -82,7 +83,8 @@ C:\ARS\Mimo\Task Server\
 - Shell: `_data/log_file.log`
 
 ### Development Block
-Блок информации о модуле в content header. Показывает иконку `developer_board.svg` + "Development". Доступен только в Development mode.
+Блок информации о модуле в content header. Показывает иконку `developer_board.svg
+│   │   └── frame_bug.svg` + "Development". Доступен только в Development mode.
 
 ### Log checkbox persistence
 Состояние галочки Log сохраняется в `config.cfg` секция `[log_enabled]`.
@@ -93,8 +95,25 @@ C:\ARS\Mimo\Task Server\
 # Зеркало: C:\ARS\Mimo\TriGlav-Shell
 git add .
 git commit -m "v1.5.x: описание"
-git push origin main
+# НЕ пушить без явного разрешения пользователя!
 ```
+
+## 5.1 Development mode zone labels
+
+В development mode каждая UI-зона имеет `data-zone="module.zone_name"`. Tooltip появляется через 500ms. Реализация: CSS `.dev-label` + JS в debug snippet.
+
+## 5.2 manifest.json — поле mode
+
+Все манифесты содержат поле `"mode": "development"` или `"mode": "production"`. Определяет режим работы модуля.
+
+## 5.3 _updater v1.4.3
+
+- `args` определён на уровне модуля (не в `__main__`)
+- `--log` флаг для управления логированием через Shell UI
+- `get_shell_port()` читает порт из `config.cfg` вместо хардкода
+- Распаковка ZIP обёрнута в try/except с очисткой при ошибке
+- `download_lock` (threading.Lock) для потокобезопасности
+- `description.md` — описание модуля с текущей версией
 
 ## 6. Известные ограничения
 

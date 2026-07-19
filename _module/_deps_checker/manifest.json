@@ -1,7 +1,7 @@
 {
   "name": "deps_checker",
   "title": "Проверка зависимостей",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Проверка и установка зависимостей модулей",
   "type": "service",
   "requires_admin": false,

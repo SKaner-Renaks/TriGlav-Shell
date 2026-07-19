@@ -1,5 +1,8 @@
 # История изменений TriGlav Shell
 
+## v1.5.5 — 2026-07-16
+- **Dev tooltip fix**: подсказка не обрезается у правого/нижнего края экрана — позиционируется с учётом границ viewport
+
 ## v1.5.4- **Development zone labels**: data-zone атрибуты на 14 UI-зон Shell
 - **Debug tooltip**: floating label :: module.zone (500ms delay, hide on move)
 - **Module env passthrough**: --environment development передаётся модулям

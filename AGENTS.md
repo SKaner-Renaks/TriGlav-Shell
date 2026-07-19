@@ -32,7 +32,7 @@ Start-Process python -ArgumentList '"main.py"' -Verb RunAs
 Shell (Flask, port 8080) управляет модулями через auto-discovery и subprocess. Каждый модуль — отдельный Flask без auth. Shell проксирует запросы через `/proxy/<port>/`.
 
 ```
-main.py              Ядро Shell           (port 8080)   VERSION = '1.5.4'
+main.py              Ядро Shell           (port 8080)   VERSION = '1.5.5'
 _data/
   config.cfg         Глобальные настройки (INI)
   manifest.json      Манифест Shell
@@ -44,20 +44,20 @@ _data/
   _ps/               PowerShell скрипты Shell
   _images/           SVG-иконки (gear, developer_board)
 _module/             Автообнаружение модулей
-  monitor/           Мониторинг сервера  (port 5005)   v1.5.1   type=usual
-  task_scheduler/    Планировщик задач   (port 5008)   v2.4.7   type=usual
-  control/           Панель управления   (port 5003)   v1.5.1   type=usual
-  invaders/          Космические захватчики (port 5004) v1.2.1   type=game
-  snake/             Змейка              (port 5007)   v1.2.1   type=game
-  flip_clock/        Flip Clock          (port 5042)   v1.1.1   type=game
-  mp3_player/        MP3 Player          (port 5009)   v1.1.1   type=game
-  smb_explorer/      SMB Explorer        (port 5006)   v3.2.1   type=usual
-  _deps_checker/     Проверка зависимостей (port 5000) v1.2.3   type=service
-  _module_manager/   Управление модулями (port 5001)   v1.3.9   type=service (requires_admin)
-  _updater/          Обновления из GitHub (port 5002)  v1.4.2   type=service
+  monitor/           Мониторинг сервера  (port 5005)   v1.5.2   type=usual
+  task_scheduler/    Планировщик задач   (port 5008)   v2.4.8   type=usual
+  control/           Панель управления   (port 5003)   v1.5.2   type=usual
+  invaders/          Космические захватчики (port 5004) v1.2.2   type=game
+  snake/             Змейка              (port 5007)   v1.2.2   type=game
+  flip_clock/        Flip Clock          (port 5042)   v1.1.2   type=game
+  mp3_player/        MP3 Player          (port 5009)   v1.1.2   type=game
+  smb_explorer/      SMB Explorer        (port 5006)   v3.2.2   type=usual
+  _deps_checker/     Проверка зависимостей (port 5000) v1.2.4   type=service
+  _module_manager/   Управление модулями (port 5001)   v1.4.0   type=service (requires_admin)
+  _updater/          Обновления и Бекапы (port 5002) v1.4.9  type=service
 ```
 
-> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.4'`.
+> **⚠ DISCREPANCY**: `main.py` строка 24 содержит `VERSION = '1.5.5'`.
 
 ## Типы модулей
 
@@ -79,6 +79,8 @@ _module/[name]/
   main.py           # Flask-приложение
   manifest.json     # Метаданные модуля
   requirements.txt  # Зависимости
+  description.md    # Описание модуля (версия, структура, API)
+  hystory.md        # История изменений
 ```
 
 ### manifest.json — обязательные поля
@@ -94,7 +96,8 @@ _module/[name]/
   "current_port": 5009,
   "languages": ["ru", "en"],
   "current_settings": {},
-  "default_settings": {}
+  "default_settings": {},
+  "mode": "development"
 }
 ```
 
@@ -196,7 +199,18 @@ Shell и модули хранят HTML-шаблоны прямо в Python-ко
 - Колонка **Версия** в таблицах модулей
 - **Стили disabled**: `opacity:0.3; cursor:not-allowed; border-color:#666; color:#666`
 
+### _updater
+
+- Сервисный модуль, скачивает архив репозитория с GitHub
+- `get_shell_port()` — читает порт Shell из `config.cfg` (не хардкодит 8080)
+- `--log` флаг — управление логированием через Shell UI
+- `download_lock` (threading.Lock) — потокобезопасность `download_state`
+- Распаковка ZIP обёрнута в try/except — очистка `EXTRACT_DIR` при ошибке
+- Остановка/запуск сервисных модулей через Shell API
+
 ## Gotchas
+
+- **Git push**: НЕ пушить на GitHub без явного разрешения пользователя. Всегда спрашивать перед `git push`.
 
 - **PowerShell encoding**: русская Windows использует cp866. Декодировать через `.decode('cp866', errors='replace')`.
 - **Task enable/disable**: `schtasks /Change` не работает для задач с RunLevel=Highest. Использовать `Enable-ScheduledTask`/`Disable-ScheduledTask` (PowerShell cmdlets).
@@ -210,6 +224,8 @@ Shell и модули хранят HTML-шаблоны прямо в Python-ко
 - **Folder button**: `ShellExecuteW` с `SW_SHOWNORMAL` не гарантирует foreground. Использовать `EnumWindows` + `SetForegroundWindow` + `BringWindowToTop`.
 - **Dev zone labels**: при добавлении нового UI-элемента в Development mode — добавлять `data-zone="module.name"` на элемент. Debug snippet автоматически покажет label при наведении.
 - **MP3 файлы**: на GitHub **не выгружать** `*.mp3` файлы. Локально хранятся в `_module/mp3_player/music/`. Добавлено в `.gitignore`.
+- **description.md**: каждый модуль имеет `description.md` с текущей версией, описанием структуры, API и замечаниями. Обновлять при изменении модуля.
+- **hystory.md**: каждый модуль имеет `hystory.md` с историей изменений. Добавлять запись при каждом изменении.
 
 ## Code Conventions
 

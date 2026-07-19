@@ -1,5 +1,8 @@
 # История изменений MP3 Player
 
+## v1.1.2 — 2026-07-16
+- **Dev tooltip fix**: подсказка не обрезается у правого/нижнего края экрана — позиционируется с учётом границ viewport
+
 ## v1.1.1
 - **Dev zone labels**: data-zone на 12 UI-зон (header, main, tracks, cover, now_playing, equalizer, progress, controls, modal)
 - **Debug tooltip**: hover-подсказки :: mp3_player.zone в development mode

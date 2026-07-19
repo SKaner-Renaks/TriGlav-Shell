@@ -1,0 +1,104 @@
+2026-07-05 14:39:57,834 [INFO] ==================================================
+2026-07-05 14:39:57,834 [INFO] Module Manager 1.3.8 started
+2026-07-05 14:39:57,834 [INFO] Config path: C:\ARS\Mimo\Task Server\_data\config.cfg
+2026-07-05 14:39:57,835 [INFO] Shell port: 8080
+2026-07-05 14:39:57,835 [INFO] ==================================================
+2026-07-05 14:39:58,708 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.12:5001
+2026-07-05 14:39:58,708 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-05 14:40:28,393 [INFO] GET /
+2026-07-05 14:40:28,402 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:28] "GET / HTTP/1.1" 200 -
+2026-07-05 14:40:28,438 [INFO] GET /api/modules_list
+2026-07-05 14:40:28,441 [INFO] Modules list requested, found 9
+2026-07-05 14:40:28,442 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:28] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 14:40:28,448 [INFO] GET /api/modules_status
+2026-07-05 14:40:28,450 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 14:40:28,524 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 14:40:28,525 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:28] "GET /api/modules_status HTTP/1.1" 200 -
+2026-07-05 14:40:49,255 [INFO] GET /
+2026-07-05 14:40:49,259 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:49] "GET / HTTP/1.1" 200 -
+2026-07-05 14:40:49,273 [INFO] GET /api/modules_list
+2026-07-05 14:40:49,276 [INFO] Modules list requested, found 9
+2026-07-05 14:40:49,279 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:49] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 14:40:49,299 [INFO] GET /api/modules_status
+2026-07-05 14:40:49,302 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 14:40:49,322 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 14:40:49,322 [INFO] 127.0.0.1 - - [05/Jul/2026 14:40:49] "GET /api/modules_status HTTP/1.1" 200 -
+2026-07-05 14:43:02,096 [INFO] ==================================================
+2026-07-05 14:43:02,097 [INFO] Module Manager 1.3.8 started
+2026-07-05 14:43:02,097 [INFO] Config path: C:\ARS\Mimo\Task Server\_data\config.cfg
+2026-07-05 14:43:02,097 [INFO] Shell port: 8080
+2026-07-05 14:43:02,097 [INFO] ==================================================
+2026-07-05 14:43:03,051 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.12:5001
+2026-07-05 14:43:03,051 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-05 14:43:19,263 [INFO] GET /
+2026-07-05 14:43:19,269 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:19] "GET / HTTP/1.1" 200 -
+2026-07-05 14:43:19,285 [INFO] GET /api/modules_list
+2026-07-05 14:43:19,286 [INFO] Modules list requested, found 9
+2026-07-05 14:43:19,287 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:19] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 14:43:19,312 [INFO] GET /api/modules_status
+2026-07-05 14:43:19,314 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 14:43:19,406 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 14:43:19,407 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:19] "GET /api/modules_status HTTP/1.1" 200 -
+2026-07-05 14:43:22,738 [INFO] ==================================================
+2026-07-05 14:43:22,738 [INFO] Module Manager 1.3.8 started
+2026-07-05 14:43:22,738 [INFO] Config path: C:\ARS\Mimo\Task Server\_data\config.cfg
+2026-07-05 14:43:22,738 [INFO] Shell port: 8080
+2026-07-05 14:43:22,738 [INFO] ==================================================
+2026-07-05 14:43:24,029 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.12:5001
+2026-07-05 14:43:24,029 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-05 14:43:28,792 [INFO] GET /
+2026-07-05 14:43:28,798 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:28] "GET / HTTP/1.1" 200 -
+2026-07-05 14:43:28,814 [INFO] GET /api/modules_list
+2026-07-05 14:43:28,818 [INFO] Modules list requested, found 9
+2026-07-05 14:43:28,818 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:28] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 14:43:28,824 [INFO] GET /api/modules_status
+2026-07-05 14:43:28,827 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 14:43:28,867 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 14:43:28,868 [INFO] 127.0.0.1 - - [05/Jul/2026 14:43:28] "GET /api/modules_status HTTP/1.1" 200 -
+2026-07-05 14:53:58,342 [INFO] ==================================================
+2026-07-05 14:53:58,342 [INFO] Module Manager 1.3.8 started
+2026-07-05 14:53:58,343 [INFO] Config path: C:\ARS\Mimo\Task Server\_data\config.cfg
+2026-07-05 14:53:58,343 [INFO] Shell port: 8080
+2026-07-05 14:53:58,343 [INFO] ==================================================
+2026-07-05 14:53:59,266 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.12:5001
+2026-07-05 14:53:59,266 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-05 14:54:04,306 [INFO] GET /
+2026-07-05 14:54:04,311 [INFO] 127.0.0.1 - - [05/Jul/2026 14:54:04] "GET / HTTP/1.1" 200 -
+2026-07-05 14:54:04,330 [INFO] GET /api/modules_list
+2026-07-05 14:54:04,332 [INFO] Modules list requested, found 9
+2026-07-05 14:54:04,332 [INFO] 127.0.0.1 - - [05/Jul/2026 14:54:04] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 14:54:04,363 [INFO] GET /api/modules_status
+2026-07-05 14:54:04,366 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 14:54:04,486 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 14:54:04,487 [INFO] 127.0.0.1 - - [05/Jul/2026 14:54:04] "GET /api/modules_status HTTP/1.1" 200 -
+2026-07-05 15:20:54,488 [INFO] ==================================================
+2026-07-05 15:20:54,488 [INFO] Module Manager 1.3.8 started
+2026-07-05 15:20:54,488 [INFO] Config path: C:\ARS\Mimo\Task Server\_data\config.cfg
+2026-07-05 15:20:54,489 [INFO] Shell port: 8080
+2026-07-05 15:20:54,489 [INFO] ==================================================
+2026-07-05 15:20:55,364 [INFO] [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.1.12:5001
+2026-07-05 15:20:55,364 [INFO] [33mPress CTRL+C to quit[0m
+2026-07-05 15:21:00,683 [INFO] GET /
+2026-07-05 15:21:00,692 [INFO] 127.0.0.1 - - [05/Jul/2026 15:21:00] "GET / HTTP/1.1" 200 -
+2026-07-05 15:21:00,706 [INFO] GET /api/modules_list
+2026-07-05 15:21:00,709 [INFO] Modules list requested, found 9
+2026-07-05 15:21:00,710 [INFO] 127.0.0.1 - - [05/Jul/2026 15:21:00] "GET /api/modules_list HTTP/1.1" 200 -
+2026-07-05 15:21:00,716 [INFO] GET /api/modules_status
+2026-07-05 15:21:00,720 [DEBUG] Starting new HTTP connection (1): 127.0.0.1:8080
+2026-07-05 15:21:00,751 [DEBUG] http://127.0.0.1:8080 "GET /api/modules HTTP/1.1" 200 3595
+2026-07-05 15:21:00,752 [INFO] 127.0.0.1 - - [05/Jul/2026 15:21:00] "GET /api/modules_status HTTP/1.1" 200 -

@@ -1,7 +1,7 @@
 {
   "name": "monitor",
   "title": "Мониторинг сервера",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "description": "Мониторинг CPU, RAM, GPU, дисков и сети",
   "type": "usual",
   "requires_admin": false,

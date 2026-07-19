@@ -1,8 +1,8 @@
 {
   "name": "updater",
-  "title": "Обновления",
-  "version": "1.4.3",
-  "description": "Обновление и установка модулей из GitHub",
+  "title": "Обновления и Бекапы",
+  "version": "1.4.9",
+  "description": "Обновление модулей из GitHub и полный бекап проекта",
   "type": "service",
   "requires_admin": false,
   "current_port": 5002,
@@ -12,5 +12,21 @@
   ],
   "current_settings": {},
   "default_settings": {},
-  "mode": "development"
+  "mode": "development",
+  "backup_ignore_dirs": [
+    ".git",
+    "__pycache__",
+    "BackUp",
+    "_BackUp",
+    "_Download",
+    ".mimocode",
+    "!-Old"
+  ],
+  "backup_ignore_exts": [
+    ".mp3",
+    ".log"
+  ],
+  "backup_ignore_files": [
+    "@01.md"
+  ]
 }

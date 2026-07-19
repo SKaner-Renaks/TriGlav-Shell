@@ -1,5 +1,8 @@
 # История изменений Flip Clock
 
+## v1.1.2 — 2026-07-16
+- **Dev tooltip fix**: подсказка не обрезается у правого/нижнего края экрана — позиционируется с учётом границ viewport
+
 ## v1.1.1
 - **Dev zone labels**: data-zone на display (1 зона)
 - **Debug tooltip**: hover-подсказки :: flip_clock.zone в development mode
