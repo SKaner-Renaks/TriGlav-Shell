@@ -10,9 +10,17 @@ import configparser
 import threading
 from flask import Flask, render_template_string, jsonify, request
 
-VERSION = '1.4.2'
+VERSION = '1.4.3'
 
 app = Flask(__name__)
+
+parser = argparse.ArgumentParser()
+parser.add_argument('--host', default='127.0.0.1')
+parser.add_argument('--port', type=int, default=5002)
+parser.add_argument('--environment', default='production', choices=['production', 'development'])
+parser.add_argument('--log', action='store_true')
+args = parser.parse_args()
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SHELL_DIR = os.path.dirname(os.path.dirname(BASE_DIR))
@@ -23,9 +31,15 @@ ZIP_PATH = os.path.join(DOWNLOAD_DIR, 'repo.zip')
 EXTRACT_DIR = os.path.join(DOWNLOAD_DIR, 'TriGlav-Shell-main')
 
 download_state = {'status': 'idle', 'percent': 0, 'message': ''}
+download_lock = threading.Lock()
 
 log = logging.getLogger('updater')
 log.setLevel(logging.DEBUG)
+
+if args.log:
+    log_path = os.path.join(BASE_DIR, 'log_file.log')
+    logging.basicConfig(filename=log_path, level=logging.DEBUG, format='%(asctime)s [%(levelname)s] %(message)s')
+    log.info('Updater %s started', VERSION)
 
 
 def setup_log():
@@ -41,6 +55,11 @@ def load_config():
     cfg = configparser.ConfigParser()
     cfg.read(os.path.join(SHELL_DIR, '_data', 'config.cfg'), encoding='utf-8')
     return cfg
+
+
+def get_shell_port():
+    cfg = load_config()
+    return int(cfg.get('shell', 'port', fallback='8080'))
 
 
 def get_autostart_config():
@@ -121,7 +140,8 @@ def get_repo_modules():
 
 def download_archive():
     global download_state
-    download_state = {'status': 'downloading', 'percent': 0, 'message': 'Starting download...'}
+    with download_lock:
+        download_state = {'status': 'downloading', 'percent': 0, 'message': 'Starting download...'}
     log.info('download: start %s', ARCHIVE_URL)
 
     try:
@@ -141,25 +161,36 @@ def download_archive():
                 f.write(chunk)
                 downloaded += len(chunk)
                 if total > 0:
-                    download_state['percent'] = int(downloaded * 100 / total)
-                    download_state['message'] = f'Downloaded {downloaded // 1024}KB / {total // 1024}KB'
+                    with download_lock:
+                        download_state['percent'] = int(downloaded * 100 / total)
+                        download_state['message'] = f'Downloaded {downloaded // 1024}KB / {total // 1024}KB'
 
-        download_state['status'] = 'extracting'
-        download_state['percent'] = 0
-        download_state['message'] = 'Extracting archive...'
+        with download_lock:
+            download_state['status'] = 'extracting'
+            download_state['percent'] = 0
+            download_state['message'] = 'Extracting archive...'
 
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zf:
-            zf.extractall(DOWNLOAD_DIR)
+        try:
+            with zipfile.ZipFile(ZIP_PATH, 'r') as zf:
+                zf.extractall(DOWNLOAD_DIR)
+        except Exception as e:
+            if os.path.isdir(EXTRACT_DIR):
+                shutil.rmtree(EXTRACT_DIR, ignore_errors=True)
+            raise e
 
-        download_state = {'status': 'done', 'percent': 100, 'message': 'Archive ready'}
+        with download_lock:
+            download_state = {'status': 'done', 'percent': 100, 'message': 'Archive ready'}
         log.info('download: done, zip=%dKB', os.path.getsize(ZIP_PATH) // 1024)
 
     except requests.exceptions.ConnectionError:
-        download_state = {'status': 'error', 'percent': 0, 'message': 'No connection to GitHub'}
+        with download_lock:
+            download_state = {'status': 'error', 'percent': 0, 'message': 'No connection to GitHub'}
     except requests.exceptions.HTTPError as e:
-        download_state = {'status': 'error', 'percent': 0, 'message': f'HTTP error: {e.response.status_code}'}
+        with download_lock:
+            download_state = {'status': 'error', 'percent': 0, 'message': f'HTTP error: {e.response.status_code}'}
     except Exception as e:
-        download_state = {'status': 'error', 'percent': 0, 'message': str(e)}
+        with download_lock:
+            download_state = {'status': 'error', 'percent': 0, 'message': str(e)}
 
 
 def copy_module_from_repo(module_name, dest_dir):
@@ -622,8 +653,9 @@ def api_config():
 @app.route('/api/download', methods=['POST'])
 def api_download():
     global download_state
-    if download_state['status'] in ('downloading', 'extracting'):
-        return jsonify({'status': 'busy', 'message': 'Download in progress'})
+    with download_lock:
+        if download_state['status'] in ('downloading', 'extracting'):
+            return jsonify({'status': 'busy', 'message': 'Download in progress'})
 
     thread = threading.Thread(target=download_archive, daemon=True)
     thread.start()
@@ -632,7 +664,8 @@ def api_download():
 
 @app.route('/api/download/status')
 def api_download_status():
-    return jsonify(download_state)
+    with download_lock:
+        return jsonify(download_state)
 
 
 @app.route('/api/scan')
@@ -711,7 +744,8 @@ def api_update():
 
         if mtype == 'service':
             try:
-                url = f'http://127.0.0.1:8080/api/module/{name}/stop'
+                shell_port = get_shell_port()
+                url = f'http://127.0.0.1:{shell_port}/api/module/{name}/stop'
                 log.info('update: stop %s', url)
                 r = requests.post(url, timeout=5)
                 log.info('update: stop -> %d', r.status_code)
@@ -743,7 +777,8 @@ def api_update():
 
         if mtype == 'service' and ok:
             try:
-                url = f'http://127.0.0.1:8080/api/module/{name}/start'
+                shell_port = get_shell_port()
+                url = f'http://127.0.0.1:{shell_port}/api/module/{name}/start'
                 log.info('update: start %s', url)
                 r = requests.post(url, timeout=10)
                 log.info('update: start -> %d', r.status_code)
@@ -766,13 +801,5 @@ def api_update():
 
 
 if __name__ == '__main__':
-    setup_log()
-    log.info('=== Updater %s started ===', VERSION)
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--host', default='127.0.0.1')
-    parser.add_argument('--port', type=int, default=5009)
-    parser.add_argument('--environment', default='production', choices=['production', 'development'])
-    args = parser.parse_args()
     print(f"Updater {VERSION} - http://{args.host}:{args.port}")
     app.run(host=args.host, port=args.port, debug=False)
